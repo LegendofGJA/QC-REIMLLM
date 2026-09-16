@@ -1,0 +1,932 @@
+[
+  {
+    "name": "PERSONAL GROOMING",
+    "row": 11,
+    "items": [
+      {
+        "number": 1,
+        "row": 12,
+        "desc": "Makeup & Wajah – Makeup natural dan profesional. Wajah bersih dan rapi. (tidak boleh menggunakan Acne Patch)",
+        "basic": 2
+      },
+      {
+        "number": 2,
+        "row": 13,
+        "desc": "Kerapian Rambut – Rambut bersih, rapi, tidak menutupi wajah. Rambut panjang wajib diikat karet dengan warna hitam.",
+        "basic": 2
+      },
+      {
+        "number": 3,
+        "row": 14,
+        "desc": "Tidak ada kumis/jenggot dan bulu hidung",
+        "basic": 2
+      },
+      {
+        "number": 4,
+        "row": 15,
+        "desc": "Apron - Dalam keaadaan bersih, tidak bercak, tidak robek, tidak berbau",
+        "basic": 2
+      },
+      {
+        "number": 5,
+        "row": 16,
+        "desc": "Topi - Dalam keadaan bersih, tidak berjamur, tidak berbau\nHijab - menggunakan hijab instant agar lebih rapi, Warna Hitam",
+        "basic": 1
+      },
+      {
+        "number": 6,
+        "row": 17,
+        "desc": "Nametag (Tidak tulis tangan, tidak miring, tidak burem)",
+        "basic": 2
+      },
+      {
+        "number": 7,
+        "row": 18,
+        "desc": "Celana - Wajib Polos Hitam (Tidak kotor, tidak bermotif/bergaris warna)",
+        "basic": 1
+      },
+      {
+        "number": 8,
+        "row": 19,
+        "desc": "Baju Polo - (Tidak boleh pudar, Sablon utuh, Tidak kotor atau berbau)",
+        "basic": 1
+      },
+      {
+        "number": 9,
+        "row": 20,
+        "desc": "Aroma tubuh (tidak bau badan, Tidak bau mulut)",
+        "basic": 1
+      },
+      {
+        "number": 10,
+        "row": 21,
+        "desc": "Kuku pendek & Bersih (Tidak menggunakan Nail Art, Kutek)",
+        "basic": 3
+      },
+      {
+        "number": 11,
+        "row": 22,
+        "desc": "Tidak diperbolehkan menggunakan Cincin, Kalung, Anting berlebihan, Gelang & Jam Tangan",
+        "basic": 3
+      },
+      {
+        "number": 12,
+        "row": 23,
+        "desc": "Tatto wajib dalam keadaan tertutup jika terlihat secara langsung dan tidak terlihat mencolok.",
+        "basic": 1
+      }
+    ]
+  },
+  {
+    "name": "ATTITUDE",
+    "row": 24,
+    "items": [
+      {
+        "number": 13,
+        "row": 25,
+        "desc": "Tepat Waktu Masuk Kerja – Karyawan wajib hadir sesuai jadwal tanpa keterlambatan.",
+        "basic": 4
+      },
+      {
+        "number": 14,
+        "row": 26,
+        "desc": "Tepat Waktu Setelah Istirahat – Karyawan wajib kembali dari break tepat waktu.",
+        "basic": 3
+      },
+      {
+        "number": 15,
+        "row": 27,
+        "desc": "Tidak bersandar atau memiliki postur tubuh yang tidak baik",
+        "basic": 3
+      },
+      {
+        "number": 16,
+        "row": 28,
+        "desc": "Tidak bergerombol/berkumpul di satu tempat",
+        "basic": 3
+      },
+      {
+        "number": 17,
+        "row": 29,
+        "desc": "Tidak terlihat muram dan acuh kepada customer",
+        "basic": 3
+      },
+      {
+        "number": 18,
+        "row": 30,
+        "desc": "Tidak bercanda selama jam kerja",
+        "basic": 3
+      },
+      {
+        "number": 19,
+        "row": 31,
+        "desc": "Fokus terhadap pekerjaan (Tidak Selalu Chattingan atau menggunakan HP saat bekerja)",
+        "basic": 3
+      },
+      {
+        "number": 20,
+        "row": 32,
+        "desc": "Tidak berbicara dengan suara keras (jika tidak diperlukan)",
+        "basic": 3
+      },
+      {
+        "number": 21,
+        "row": 33,
+        "desc": "Pengunaan Barang Outlet - Tidak digunakan untuk Kepentingan Pribadi",
+        "basic": 3
+      }
+    ]
+  },
+  {
+    "name": "SQUENCE OF SERVICE",
+    "row": 34,
+    "subcategories": [
+      {
+        "name": "A. Greeting",
+        "row": 35,
+        "items": [
+          {
+            "number": 22,
+            "row": 36,
+            "desc": "Greeting : \"Welcome to Teazzi\"",
+            "basic": 3
+          },
+          {
+            "number": 23,
+            "row": 37,
+            "desc": "Eye Contact - Menatap dengan sopan saat hendak pengorderan",
+            "basic": 3
+          },
+          {
+            "number": 24,
+            "row": 38,
+            "desc": "SMILE - Senyum tulus saat melayani customer",
+            "basic": 3
+          }
+        ]
+      },
+      {
+        "name": "B. Taking Order",
+        "row": 39,
+        "items": [
+          {
+            "number": 25,
+            "row": 40,
+            "desc": "Professionalsm & Respect - Jika ada antrian atau bulk-order, beri estimasi waktu tunggu.  \n– Jika ingin menginput orderan online, minta izin kepada customer terlebih dahulu.",
+            "basic": 4
+          },
+          {
+            "number": 26,
+            "row": 41,
+            "desc": "Memberi Rekomendasi & Aktif – Aktif membantu customer memilih menu sesuai preferensi.",
+            "basic": 3
+          },
+          {
+            "number": 27,
+            "row": 42,
+            "desc": "Upselling Topping, Produk Baru– Menawarkan tambahan topping secara efektif & Menawarkan Produk baru",
+            "basic": 4
+          },
+          {
+            "number": 28,
+            "row": 43,
+            "desc": "Menawarkan Member – Menjelaskan manfaat dan mengajak customer untuk menjadi member.",
+            "basic": 4
+          },
+          {
+            "number": 29,
+            "row": 44,
+            "desc": "Penguasaan Produk – Memahami menu, bahan, dan keunggulan setiap produk dengan baik.",
+            "basic": 4
+          },
+          {
+            "number": 30,
+            "row": 45,
+            "desc": "Ketepatan Transaksi – Proses pembayaran dengan benar, kembalian dan struk harus akurat.",
+            "basic": 3
+          },
+          {
+            "number": 31,
+            "row": 46,
+            "desc": "Akurasi Pesanan – Sajikan sesuai permintaan customer tanpa kesalahan.",
+            "basic": 3
+          }
+        ]
+      },
+      {
+        "name": "C. Serving the Order",
+        "row": 47,
+        "items": [
+          {
+            "number": 32,
+            "row": 48,
+            "desc": "Sajikan minuman sesuai urutan pesanan (First In, First Out).",
+            "basic": 4
+          },
+          {
+            "number": 33,
+            "row": 49,
+            "desc": "Gunakan 2 tangan dalam memberikan pesanan customer baik cup only atau dalam plastik",
+            "basic": 4
+          },
+          {
+            "number": 34,
+            "row": 50,
+            "desc": "Farewell Greeting - “Ini pesanan Kakak, terima kasih! Enjoy your tea!”",
+            "basic": 3
+          },
+          {
+            "number": 35,
+            "row": 51,
+            "desc": "Eye Contact - Menatap dengan sopan saat menyajikan menu",
+            "basic": 3
+          },
+          {
+            "number": 36,
+            "row": 52,
+            "desc": "SMILE - Senyum tulus saat melayani customer",
+            "basic": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "PRODUCT HANDLING",
+    "row": 53,
+    "subcategories": [
+      {
+        "name": "A. Raw Material",
+        "row": 54,
+        "items": [
+          {
+            "number": 37,
+            "row": 55,
+            "desc": "Ketersediaan Produk – Pastikan semua teh dan topping tersedia, tidak ada yang kosong.",
+            "basic": 2
+          },
+          {
+            "number": 38,
+            "row": 56,
+            "desc": "Ketersediaan Produk Online– Pastikan seluruh menu online sesuai dengan ketersediaan menu di outlet.",
+            "basic": 2
+          },
+          {
+            "number": 39,
+            "row": 57,
+            "desc": "Sumber Bahan Baku – Hanya boleh membeli bahan baku dari toko yang terdaftar.",
+            "basic": 3
+          },
+          {
+            "number": 40,
+            "row": 58,
+            "desc": "FIFO – Gunakan bahan baku sesuai urutan masuk (First In, First Out).",
+            "basic": 2
+          },
+          {
+            "number": 41,
+            "row": 59,
+            "desc": "Kebersihan Bahan Baku – Semua bahan baku harus ditutup rapat.",
+            "basic": 3
+          },
+          {
+            "number": 42,
+            "row": 60,
+            "desc": "Kualitas & Kebersihan Bahan – Gunakan bahan segar, tidak kedaluwarsa, berlabel jelas, dan jaga area kerja tetap higienis.",
+            "basic": 3
+          },
+          {
+            "number": 43,
+            "row": 61,
+            "desc": "Takaran Bahan Baku – Gunakan ukuran / Takaran Bahan Baku sesuai standar.",
+            "basic": 3
+          },
+          {
+            "number": 44,
+            "row": 62,
+            "desc": "Penyimpanan Bahan Baku, tidak boleh diletakan diatas lantai langsung.",
+            "basic": 3
+          },
+          {
+            "number": 45,
+            "row": 63,
+            "desc": "Pengunaan bahan baku Outlet Tidak digunakan untuk Kepentingan Pribadi",
+            "basic": 3
+          }
+        ]
+      },
+      {
+        "name": "B. Processing Order",
+        "row": 64,
+        "items": [
+          {
+            "number": 46,
+            "row": 65,
+            "desc": "Akurasi Pesanan – Sajikan sesuai permintaan customer tanpa kesalahan.",
+            "basic": 3
+          },
+          {
+            "number": 47,
+            "row": 66,
+            "desc": "Konsistensi Produk – Proses pembuatan tea",
+            "basic": 3
+          },
+          {
+            "number": 48,
+            "row": 67,
+            "desc": "Konsistensi Produk – Proses pembuatan topping",
+            "basic": 3
+          },
+          {
+            "number": 49,
+            "row": 68,
+            "desc": "Penutup Wadah – Tutup kembali kotak es batu dan creamer setelah digunakan.",
+            "basic": 3
+          },
+          {
+            "number": 50,
+            "row": 69,
+            "desc": "Shaking – Kocok minuman 10–15 kali sesuai standar.",
+            "basic": 3
+          },
+          {
+            "number": 51,
+            "row": 70,
+            "desc": "Ambil Es – Ambil es batu dengan rapi, tidak berantakan.",
+            "basic": 3
+          },
+          {
+            "number": 52,
+            "row": 71,
+            "desc": "Kecepatan Proses Pesanan – Ambil, siapkan, dan sajikan pesanan dengan cepat dan efisien.  (Standar 1 Cup, 1 Menit)",
+            "basic": 3
+          },
+          {
+            "number": 53,
+            "row": 72,
+            "desc": "Higienitas Minuman – Jari tidak boleh menyentuh minuman atau bagian dalam cup.",
+            "basic": 3
+          },
+          {
+            "number": 54,
+            "row": 73,
+            "desc": "Takaran Topping – Gunakan topping sesuai gramasi yang ditentukan.",
+            "basic": 3
+          }
+        ]
+      },
+      {
+        "name": "C. Packaging",
+        "row": 74,
+        "items": [
+          {
+            "number": 55,
+            "row": 75,
+            "desc": "Kualitas Kemasan – Sealing Cup & Cup harus kuat, tidak bocor, dan menjaga suhu minuman.",
+            "basic": 3
+          },
+          {
+            "number": 56,
+            "row": 76,
+            "desc": "Tampilan & Branding – Kemasan menarik dan mencerminkan identitas brand.",
+            "basic": 3
+          },
+          {
+            "number": 57,
+            "row": 77,
+            "desc": "Kebersihan Cup – Cup minuman harus bersih dan sudah dilap sebelum disajikan.",
+            "basic": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ENVIRONMENT",
+    "row": 78,
+    "subcategories": [
+      {
+        "name": "A. Music / Ambience",
+        "row": 79,
+        "items": [
+          {
+            "number": 58,
+            "row": 80,
+            "desc": "Putar musik - Jika diperlukan",
+            "basic": 1,
+            "exclude_from_score": true
+          },
+          {
+            "number": 59,
+            "row": 81,
+            "desc": "Bahasa Lagu – Hanya lagu berbahasa Inggris yang boleh diputar.",
+            "basic": 3
+          },
+          {
+            "number": 60,
+            "row": 82,
+            "desc": "Genre Musik – Sesuaikan dengan konsep toko; hindari heavy metal, rock, EDM, dan sejenisnya.",
+            "basic": 3
+          },
+          {
+            "number": 61,
+            "row": 83,
+            "desc": "Volume Musik – Volume sedang, tidak terlalu keras atau terlalu pelan.",
+            "basic": 2
+          }
+        ]
+      },
+      {
+        "name": "B. Temperature & Fragnance",
+        "row": 84,
+        "items": [
+          {
+            "number": 62,
+            "row": 85,
+            "desc": "Suhu Nyaman – Jaga suhu ruangan 22–25°C untuk kenyamanan customer dan staff.",
+            "basic": 4
+          },
+          {
+            "number": 63,
+            "row": 86,
+            "desc": "Stabilitas Suhu – Hindari perubahan suhu mendadak antar area.",
+            "basic": 4
+          },
+          {
+            "number": 64,
+            "row": 87,
+            "desc": "Sirkulasi & Kelembapan – Ventilasi baik, kelembapan dijaga di 40–60%.",
+            "basic": 3
+          },
+          {
+            "number": 65,
+            "row": 88,
+            "desc": "Aroma Menyenangkan – Ruangan harus wangi dan menyegarkan. Tidak terlalu menyengat",
+            "basic": 3
+          }
+        ]
+      },
+      {
+        "name": "C. Technical",
+        "row": 89,
+        "items": [
+          {
+            "number": 66,
+            "row": 90,
+            "desc": "Kalibrasi Mesin Gula – Pastikan kalibrasi sesuai standar (–2 poin jika tidak sesuai).",
+            "basic": 4
+          },
+          {
+            "number": 67,
+            "row": 91,
+            "desc": "Parameter Ph air (Sesuai 6,5 - 8,5)",
+            "basic": 4
+          },
+          {
+            "number": 68,
+            "row": 92,
+            "desc": "TDS Air sesuai (100 -90 ppm)",
+            "basic": 4
+          },
+          {
+            "number": 69,
+            "row": 93,
+            "desc": "Scale (Timbangan)",
+            "basic": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "CLEANLINESS",
+    "row": 94,
+    "subcategories": [
+      {
+        "name": "A. Display",
+        "row": 95,
+        "items": [
+          {
+            "number": 70,
+            "row": 96,
+            "desc": "Logo – Harus bersih, utuh, dan terpasang dengan rapi.",
+            "basic": 4
+          },
+          {
+            "number": 71,
+            "row": 97,
+            "desc": "Quotes – Harus bersih, utuh, dan terpasang dengan rapi.",
+            "basic": 4
+          },
+          {
+            "number": 72,
+            "row": 98,
+            "desc": "Lampu – Tidak boleh ada lampu mati, semua harus berfungsi.",
+            "basic": 1
+          },
+          {
+            "number": 73,
+            "row": 99,
+            "desc": "Televisi – Harus dalam kondisi menyala dan siap digunakan.",
+            "basic": 4
+          },
+          {
+            "number": 74,
+            "row": 100,
+            "desc": "Area Kasir – Tent card, menu, Qris, Kabel & Stop Kontak harus tertata dan bersih.",
+            "basic": 4
+          },
+          {
+            "number": 75,
+            "row": 101,
+            "desc": "Tempat Sampah Kecil – Tidak boleh penuh terlalu lama, harus rutin dikosongkan.",
+            "basic": 4
+          },
+          {
+            "number": 76,
+            "row": 102,
+            "desc": "Banner & Signage – Bersih, tidak rusak, dan dipasang sesuai standar.",
+            "basic": 4
+          },
+          {
+            "number": 77,
+            "row": 103,
+            "desc": "Wajib ada Display Nomor Antrian - Dalam Keadaan aktif / berfungsi & Selalu update",
+            "basic": 4
+          }
+        ]
+      },
+      {
+        "name": "B. Bar Area",
+        "row": 104,
+        "items": [
+          {
+            "number": 78,
+            "row": 105,
+            "desc": "Area Staff – Lemari staff harus rapi, barang pribadi tidak bercampur dengan barang toko dan tidak terlihat customer.",
+            "basic": 3
+          },
+          {
+            "number": 79,
+            "row": 106,
+            "desc": "Larangan Makan – Tidak diperbolehkan makan di dalam area store.",
+            "basic": 5
+          },
+          {
+            "number": 80,
+            "row": 107,
+            "desc": "Larangan membawa makanan & Minuman yang diletakan dan terlihat diarea terbuka yang terlihat langsung.",
+            "basic": 4
+          },
+          {
+            "number": 81,
+            "row": 108,
+            "desc": "Kerapihan Barang – Semua barang di dalam store harus tertata dengan rapi.",
+            "basic": 4
+          },
+          {
+            "number": 82,
+            "row": 109,
+            "desc": "Tempat Sampah – Tidak boleh dalam kondisi terbuka.",
+            "basic": 5
+          },
+          {
+            "number": 83,
+            "row": 110,
+            "desc": "Kebersihan Lantai – Perhatikan sudut mati dan seluruh permukaan lantai.",
+            "basic": 5
+          },
+          {
+            "number": 84,
+            "row": 111,
+            "desc": "Sink - Tidak banyak Kotoran, Tidak ada genangan, Tidak Berkerak Coklat",
+            "basic": 5
+          },
+          {
+            "number": 85,
+            "row": 112,
+            "desc": "Rel Bawah Wastafel – Harus bersih dan bebas dari kotoran atau tumpukan barang.",
+            "basic": 5
+          },
+          {
+            "number": 86,
+            "row": 113,
+            "desc": "Clean as You Go - Jika terdapat tumpahan / Cipratan Milk Tea, Topping ataupun produk. Dapat segera dibersihkan, tidak menunggu hingga closing / jam shift berakhir. Preparation table & Production Table (tidak terdapat sisa produk)",
+            "basic": 5
+          }
+        ]
+      },
+      {
+        "name": "C. Equipment",
+        "row": 114,
+        "items": [
+          {
+            "number": 87,
+            "row": 115,
+            "desc": "Timbangan (Scale)",
+            "basic": 1
+          },
+          {
+            "number": 88,
+            "row": 116,
+            "desc": "Rice Cooker",
+            "basic": 2
+          },
+          {
+            "number": 89,
+            "row": 117,
+            "desc": "Tea Keg (Keran, Sticker, Bagian dalam)",
+            "basic": 2
+          },
+          {
+            "number": 90,
+            "row": 118,
+            "desc": "Wadah Creamer",
+            "basic": 2
+          },
+          {
+            "number": 91,
+            "row": 119,
+            "desc": "Mesin Gula",
+            "basic": 3
+          },
+          {
+            "number": 92,
+            "row": 120,
+            "desc": "Mesin Seal",
+            "basic": 2
+          },
+          {
+            "number": 93,
+            "row": 121,
+            "desc": "Panci",
+            "basic": 2
+          },
+          {
+            "number": 94,
+            "row": 122,
+            "desc": "Kompor",
+            "basic": 2
+          },
+          {
+            "number": 95,
+            "row": 123,
+            "desc": "Water Boiler",
+            "basic": 2
+          },
+          {
+            "number": 96,
+            "row": 124,
+            "desc": "Gelas Ukuran Jumbo (Jug 5000 mL)",
+            "basic": 2
+          },
+          {
+            "number": 97,
+            "row": 125,
+            "desc": "Ice Maker",
+            "basic": 2
+          },
+          {
+            "number": 98,
+            "row": 126,
+            "desc": "Juicer",
+            "basic": 2
+          },
+          {
+            "number": 99,
+            "row": 127,
+            "desc": "Blender",
+            "basic": 2
+          },
+          {
+            "number": 100,
+            "row": 128,
+            "desc": "Chiller",
+            "basic": 2
+          },
+          {
+            "number": 101,
+            "row": 129,
+            "desc": "Lime Press",
+            "basic": 2
+          },
+          {
+            "number": 102,
+            "row": 130,
+            "desc": "Pisau & Wadah Pisau",
+            "basic": 2
+          },
+          {
+            "number": 103,
+            "row": 131,
+            "desc": "Jug 500 mL",
+            "basic": 2
+          },
+          {
+            "number": 104,
+            "row": 132,
+            "desc": "Botol Squizze",
+            "basic": 2
+          },
+          {
+            "number": 105,
+            "row": 133,
+            "desc": "APAR tersedia dan siap digunakan",
+            "basic": 2
+          },
+          {
+            "number": 106,
+            "row": 134,
+            "desc": "Lap pembersih dalam kondisi bersih & digunakan dengan benar",
+            "basic": 2
+          },
+          {
+            "number": 107,
+            "row": 135,
+            "desc": "Alat kebersihan dalam kondisi bersih & Layak digunakan",
+            "basic": 2
+          },
+          {
+            "number": 108,
+            "row": 136,
+            "desc": "Kotak P3K – Pastikan tersedia dan isinya lengkap.",
+            "basic": 1
+          },
+          {
+            "number": 109,
+            "row": 137,
+            "desc": "Other",
+            "basic": 1
+          }
+        ]
+      },
+      {
+        "name": "D. Seating Area",
+        "row": 138,
+        "items": [
+          {
+            "number": 110,
+            "row": 139,
+            "desc": "Meja - Dalam Keadaan Bersih & Tidak Rusak",
+            "basic": 2
+          },
+          {
+            "number": 111,
+            "row": 140,
+            "desc": "Kursi - Dalam Keadaan Bersih & Tidak Rusak",
+            "basic": 3
+          },
+          {
+            "number": 112,
+            "row": 141,
+            "desc": "Lantai Dining Area - Bersih & tidak rusak",
+            "basic": 3
+          },
+          {
+            "number": 113,
+            "row": 142,
+            "desc": "Tempat Sampah – Tidak boleh penuh, harus rutin dikosongkan.",
+            "basic": 4
+          },
+          {
+            "number": 114,
+            "row": 143,
+            "desc": "Partisi, dinding dan interior dalam kondisi bersih",
+            "basic": 4
+          },
+          {
+            "number": 115,
+            "row": 144,
+            "desc": "Display Dining Area - Tanaman, Seasonal Design, Merchandise pastikan bersih dan tidak rusak",
+            "basic": 4
+          },
+          {
+            "number": 116,
+            "row": 145,
+            "desc": "Tidak ada debu/kotoran/noda pada interior kaca",
+            "basic": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "FOOD SAFETY",
+    "row": 146,
+    "subcategories": [
+      {
+        "name": "A. Habbit",
+        "row": 147,
+        "items": [
+          {
+            "number": 117,
+            "row": 148,
+            "desc": "Pemisahan Alat – Alat kebersihan tidak boleh dicampur dengan alat makan, dan sebaliknya.",
+            "basic": 6
+          },
+          {
+            "number": 118,
+            "row": 149,
+            "desc": "Kesehatan Staff – Staff sakit tidak boleh bekerja. Jika batuk, flu, atau demam, wajib pakai masker dan bebas dari penyakit menular.",
+            "basic": 6
+          },
+          {
+            "number": 119,
+            "row": 150,
+            "desc": "Cuci Tangan – Wajib mencuci tangan sebelum memproses produk.",
+            "basic": 6
+          },
+          {
+            "number": 120,
+            "row": 151,
+            "desc": "Sarung Tangan – Wajib pakai sarung tangan bersih tanpa sobek, dan segera diganti jika rusak. (2 Sarung tangan untuk Bar, 1 sarung tangan untuk Kasir)",
+            "basic": 6
+          }
+        ]
+      },
+      {
+        "name": "B. Product Quality",
+        "row": 152,
+        "items": [
+          {
+            "number": 121,
+            "row": 153,
+            "desc": "Produk Terbuka – Tidak boleh ada produk/Topping terbuka di luar Teazzi serta di dalam kulkas.",
+            "basic": 5
+          },
+          {
+            "number": 122,
+            "row": 154,
+            "desc": "Penutupan Produk – Semua produk harus tertutup rapat.",
+            "basic": 5
+          },
+          {
+            "number": 123,
+            "row": 155,
+            "desc": "Labeling Topping - Semua bahan baku kitchen memiliki label serta Penggunaan sesuai dengan FIFO/FEFO",
+            "basic": 5
+          },
+          {
+            "number": 124,
+            "row": 156,
+            "desc": "Wadah Topping harus dalam keadaan bersih dan kering.",
+            "basic": 5
+          },
+          {
+            "number": 125,
+            "row": 157,
+            "desc": "Bahan Terkontaminasi – Bahan yang jatuh atau terkontaminasi tidak boleh digunakan lagi. Produk Expired\nperlu disiapkan 5 laddle saringan topping yang berbeda.",
+            "basic": 5
+          },
+          {
+            "number": 126,
+            "row": 158,
+            "desc": "Benda Asing – Produk tidak boleh mengandung benda asing apa pun.",
+            "basic": 5
+          },
+          {
+            "number": 127,
+            "row": 159,
+            "desc": "Ice Bin Wajib dalam keadaan bersih.",
+            "basic": 5
+          },
+          {
+            "number": 128,
+            "row": 160,
+            "desc": "Produk lama tidak boleh dicampur dengan produk baru.",
+            "basic": 5
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "PEST CONTROL",
+    "row": 161,
+    "items": [
+      {
+        "number": 129,
+        "row": 162,
+        "desc": "Kebersihan dari Hama – Kecoa / Tikus",
+        "basic": 40
+      },
+      {
+        "number": 130,
+        "row": 163,
+        "desc": "Kebersihan dari Hama – Serangga, Lalat / Fly dll",
+        "basic": 20
+      }
+    ]
+  },
+  {
+    "name": "ETC",
+    "row": 164,
+    "note": {
+      "name": "ETC",
+      "row": 164,
+      "note_row": 165,
+      "note_number": 131,
+      "note_text": "Beragam jenis laporan atau masukan dapat diajukan untuk meningkatkan kualitas toko dan mendorong perbaikan berkelanjutan."
+    }
+  }
+]
