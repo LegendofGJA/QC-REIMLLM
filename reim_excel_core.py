@@ -51,9 +51,13 @@ def _reinsert_media(out_bytes: bytes, src_path: str) -> bytes:
         return out_bytes
 
     src_names = set(src.namelist())
-    drawing_parts = [n for n in src_names if n.startswith("xl/drawings/")
-                     and n.endswith(".xml")]
-    media_parts = [n for n in src_names if n.startswith("xl/media/")]
+    # Ambil SEMUA part di bawah xl/drawings/ (termasuk _rels/*.rels yang
+    # menghubungkan <a:blip r:embed="..."> ke file gambar) + xl/media/.
+    # Kalau _rels drawing tidak ikut tersalin, logo jadi gambar rusak
+    # (relasi rId tidak ketemu) walau file image1.png ada.
+    drawing_parts = sorted(n for n in src_names
+                           if n.startswith("xl/drawings/"))
+    media_parts = sorted(n for n in src_names if n.startswith("xl/media/"))
     if not drawing_parts and not media_parts:
         return out_bytes  # template memang tanpa gambar
 
@@ -122,6 +126,8 @@ def _patch_content_types(ct_xml: bytes, media_parts, drawing_parts) -> bytes:
         additions.append('<Default Extension="png" '
                          'ContentType="image/png"/>')
     for n in drawing_parts:
+        if not n.endswith(".xml"):
+            continue  # hanya part drawing XML yang butuh Override
         override = ('<Override PartName="/%s" ContentType="application/'
                     'vnd.openxmlformats-officedocument.drawing+xml"/>' % n)
         if ('PartName="/%s"' % n) not in text:
