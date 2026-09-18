@@ -137,8 +137,12 @@ def inject_scroll_buttons():
                         color: #fff;
                         transform: translateY(-1px);
                     }
-                    #qc-scroll-top { top: 14px; }
-                    #qc-scroll-bottom { bottom: 14px; }
+                    #qc-scroll-top { top: 58px; }
+                    #qc-scroll-bottom { bottom: 56px; }
+                    @media (max-width: 640px) {
+                        #qc-scroll-top { top: 64px; }
+                        #qc-scroll-bottom { bottom: 78px; }
+                    }
                 </style>
                 <button id="qc-scroll-top" class="qc-scroll-btn" title="Ke atas" aria-label="Gulir ke atas" type="button">&#9650;</button>
                 <button id="qc-scroll-bottom" class="qc-scroll-btn" title="Ke bawah" aria-label="Gulir ke bawah" type="button">&#9660;</button>
