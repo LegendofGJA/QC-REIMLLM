@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from style import inject_css, inject_sidebar_brand, inject_footer
 from scoring import compute_all
@@ -67,76 +68,98 @@ st.markdown(
         justify-content: center !important;
         margin: 0 !important;
     }
-    /* ── Tombol gulir cepat (scroll to top / bottom) ── */
-    /* Wadah keyed: diposisikan fixed agar tidak ikut ter-scroll. */
-    div.st-key-scroll_nav {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        pointer-events: none;
-        z-index: 9998;
-        overflow: visible !important;
-    }
-    div.st-key-scroll_nav > div,
-    div.st-key-scroll_nav [data-testid="stVerticalBlock"],
-    div.st-key-scroll_nav [data-testid="stMarkdownContainer"] {
-        position: static !important;
-        pointer-events: none;
-    }
-    .scroll-nav-btn {
-        position: fixed;
-        right: 18px;
-        z-index: 9998;
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background: var(--surface);
-        color: var(--accent);
-        border: 1px solid var(--border);
-        box-shadow: 0 3px 14px rgba(0,0,0,0.28);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.05rem;
-        line-height: 1;
-        text-decoration: none !important;
-        pointer-events: auto;
-        transition: transform .12s ease, background .12s ease;
-    }
-    .scroll-nav-btn:hover {
-        background: var(--accent);
-        color: #fff;
-        transform: translateY(-1px);
-    }
-    .scroll-nav-btn:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-    }
-    .scroll-top-btn { top: 14px; }
-    .scroll-bottom-btn { bottom: 14px; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Jangkar di alur dokumen biasa (target scroll harus berada di alur, bukan di kotak fixed)
-st.markdown("<span id='page-top'></span>", unsafe_allow_html=True)
 
-# Tombol gulir ke atas/bawah (wadah keyed agar fixed-nya stabil & tidak ter-scroll)
-with st.container(key="scroll_nav"):
-    st.markdown(
-        "<a class='scroll-nav-btn scroll-top-btn' href='#page-top' "
-        "title='Ke atas' aria-label='Gulir ke atas'>&#9650;</a>"
-        "<a class='scroll-nav-btn scroll-bottom-btn' href='#page-bottom' "
-        "title='Ke bawah' aria-label='Gulir ke bawah'>&#9660;</a>",
-        unsafe_allow_html=True,
+def inject_scroll_buttons():
+    """Tombol sticky scroll-to-top (kanan atas) & scroll-to-bottom (kanan bawah).
+
+    Dipasang lewat components.html (bukan st.markdown) supaya bisa dieksekusi
+    sebagai JS beneran dan menempelkan tombolnya langsung ke `body` paling
+    atas lewat window.parent.document -- ini melewati semua container
+    Streamlit yang suka diberi transform/overflow oleh tema, yang sebelumnya
+    bikin `position: fixed` versi CSS-murni jadi ikut ke-scroll & hilang.
+    Klik tombolnya juga otomatis mencari elemen yang BENERAN scroll di
+    halaman (bukan asumsi window), jadi tetap jalan walau struktur DOM
+    Streamlit berubah antar versi.
+    """
+    components.html(
+        """
+        <script>
+        (function() {
+            const doc = window.parent.document;
+
+            function getScrollEl() {
+                const candidates = [
+                    doc.querySelector('section.main'),
+                    doc.querySelector('[data-testid="stAppViewContainer"]'),
+                    doc.querySelector('[data-testid="stMain"]'),
+                    doc.scrollingElement,
+                    doc.documentElement,
+                ].filter(Boolean);
+                for (const el of candidates) {
+                    if (el.scrollHeight > el.clientHeight + 10) return el;
+                }
+                return candidates[0] || doc.documentElement;
+            }
+
+            const old = doc.getElementById('qc-scroll-nav-wrapper');
+            if (old) old.remove();
+
+            const wrapper = doc.createElement('div');
+            wrapper.id = 'qc-scroll-nav-wrapper';
+            wrapper.innerHTML = `
+                <style>
+                    #qc-scroll-nav-wrapper .qc-scroll-btn {
+                        position: fixed !important;
+                        right: 18px;
+                        z-index: 999999;
+                        width: 42px;
+                        height: 42px;
+                        border-radius: 50%;
+                        background: var(--surface, #1c1c1c);
+                        color: var(--accent, #e63946);
+                        border: 1px solid var(--border, #333);
+                        box-shadow: 0 3px 14px rgba(0,0,0,0.35);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.15rem;
+                        line-height: 1;
+                        cursor: pointer;
+                        transition: transform .12s ease, background .12s ease;
+                    }
+                    #qc-scroll-nav-wrapper .qc-scroll-btn:hover {
+                        background: var(--accent, #e63946);
+                        color: #fff;
+                        transform: translateY(-1px);
+                    }
+                    #qc-scroll-top { top: 14px; }
+                    #qc-scroll-bottom { bottom: 14px; }
+                </style>
+                <button id="qc-scroll-top" class="qc-scroll-btn" title="Ke atas" aria-label="Gulir ke atas" type="button">&#9650;</button>
+                <button id="qc-scroll-bottom" class="qc-scroll-btn" title="Ke bawah" aria-label="Gulir ke bawah" type="button">&#9660;</button>
+            `;
+            doc.body.appendChild(wrapper);
+
+            doc.getElementById('qc-scroll-top').onclick = function() {
+                getScrollEl().scrollTo({top: 0, behavior: 'smooth'});
+            };
+            doc.getElementById('qc-scroll-bottom').onclick = function() {
+                const el = getScrollEl();
+                el.scrollTo({top: el.scrollHeight, behavior: 'smooth'});
+            };
+        })();
+        </script>
+        """,
+        height=0,
     )
+
+
+inject_scroll_buttons()
 
 structure = load_structure()
 supabase = get_supabase_client()
@@ -178,6 +201,38 @@ def _sync_remark_widgets(remarks: dict):
                 num = str(it["number"])
                 wk = f"{prefix}_remark_{num}"
                 st.session_state[wk] = _safe_remark(remarks.get(num, ""))
+
+
+def build_current_remarks(structure) -> dict:
+    """Kumpulkan Remarks TERKINI: kalau widget-nya sudah pernah dirender pada
+    run ini/sebelumnya, ambil dari session_state widget-nya langsung (yang
+    selalu up-to-date walau textarea-nya belum dirender ulang di run ini);
+    kalau belum pernah, fallback ke state 'remarks' tersimpan. Dipakai untuk
+    pratinjau skor di TENGAH halaman, sebelum tabel checklist dirender."""
+    current = {}
+    for cat in structure:
+        if cat.get("name") == "ETC":
+            continue
+        if "subcategories" in cat:
+            for sub in cat["subcategories"]:
+                prefix = f"editor_{sub['row']}"
+                for it in sub["items"]:
+                    num = str(it["number"])
+                    wk = f"{prefix}_remark_{num}"
+                    if wk in st.session_state:
+                        current[num] = _safe_remark(st.session_state[wk])
+                    else:
+                        current[num] = _safe_remark(st.session_state["remarks"].get(num, ""))
+        else:
+            prefix = f"editor_{cat['row']}"
+            for it in cat.get("items", []):
+                num = str(it["number"])
+                wk = f"{prefix}_remark_{num}"
+                if wk in st.session_state:
+                    current[num] = _safe_remark(st.session_state[wk])
+                else:
+                    current[num] = _safe_remark(st.session_state["remarks"].get(num, ""))
+    return current
 
 
 def reset_form():
@@ -290,6 +345,14 @@ with c2:
     st.session_state["pic_on_duty"] = st.text_input("PIC ON DUTY", value=st.session_state["pic_on_duty"])
 
 st.markdown("---")
+
+_preview_result = compute_all(structure, build_current_remarks(structure))
+pm1, pm2, pm3 = st.columns(3)
+pm1.metric("TOTAL SCORE (E184)", round(_preview_result["grand_percent_sum"], 2))
+pm2.metric("FINAL SCORE", round(_preview_result["final_score"], 2))
+pm3.metric("GRADING", _preview_result["grade"])
+
+st.markdown("---")
 st.subheader("DETAIL TO VERIFY")
 st.caption("Isi kolom Remarks kalau ada temuan. Remarks terisi -> Actual Score poin itu otomatis 0.")
 
@@ -369,7 +432,7 @@ m1.metric("TOTAL SCORE (E184)", round(result["grand_percent_sum"], 2))
 m2.metric("FINAL SCORE", round(result["final_score"], 2))
 m3.metric("GRADING", result["grade"])
 
-st.markdown("<div style=\"height:110px\"></div><span id='page-bottom'></span>", unsafe_allow_html=True)
+st.markdown("<div style=\"height:110px\"></div>", unsafe_allow_html=True)
 
 # ── Format score untuk log (Save & Download pakai ini) ──
 _score_str = f"{round(result['final_score'], 2)}, {result['grade']}"
