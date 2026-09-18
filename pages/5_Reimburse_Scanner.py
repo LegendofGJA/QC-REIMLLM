@@ -23,7 +23,7 @@ from reim_extract_core import (
     dedupe_flazz_against_receipts,
     receipt_sort_key,
 )
-from reim_gps_core import gps_location_name, read_gps
+from reim_gps_core import gps_location_name, gps_short_address, read_gps
 from reim_llm_core import PROVIDERS, fetch_all_models, fetch_vision_models, ping_model
 from reim_llm_core import call_vision
 from reim_pdf_core import merge_images_to_pdf
@@ -396,19 +396,24 @@ if st.session_state.extracted_items:
     st.dataframe(display_df, width="stretch")
     st.markdown(f"**Total: Rp {df['nominal'].sum():,.0f}**".replace(",", "."))
 
-    # GPS dari foto struk (dipertahankan)
+    # GPS dari foto struk → tampilkan nama jalan & kota (bukan koordinat mentah)
     gps_list = []
     for f in uploaded_files or []:
         g = read_gps(f.getvalue())
-        if g:
-            gps_list.append((f.name, g))
+        if not g:
+            continue
+        try:
+            addr = gps_short_address(f.getvalue())
+        except Exception:
+            addr = ""
+        gps_list.append((f.name, addr))
     if gps_list:
         with st.expander("📍 Lokasi GPS dari EXIF foto"):
-            for fname, g in gps_list:
-                st.write(
-                    f"- **{fname}**: {g['lat']:.6f}, {g['lon']:.6f}"
-                    + (f" (diambil {g['timestamp']})" if g.get("timestamp") else "")
-                )
+            for fname, addr in gps_list:
+                if addr:
+                    st.write(f"- **{fname}**: {addr}")
+                else:
+                    st.write(f"- **{fname}**: _(nama jalan/kota tidak terbaca)_")
 
     # ── Proses Excel & PDF secara manual → baru muncul tombol download ───────
     # Tombol "Proses" menghasilkan file sekali; hasilnya disimpan di
