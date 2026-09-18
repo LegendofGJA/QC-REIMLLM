@@ -168,7 +168,7 @@ st.markdown(
     .home-stat-value { margin-bottom: 5px; color: var(--text); font-size: 1.45rem; font-weight: 800; line-height: 1; }
     .home-stat-label { color: var(--text-muted); font-size: 0.7rem; font-weight: 600; }
     .home-workflow {
-        display: grid; grid-template-columns: repeat(7, auto); align-items: center;
+        display: flex; flex-wrap: wrap; align-items: center;
         justify-content: center; gap: 12px; padding: 28px 20px;
         border: 1px solid var(--border); border-radius: 20px;
         background: linear-gradient(145deg, rgba(18, 18, 32, 0.96), rgba(25, 25, 48, 0.72));
@@ -198,7 +198,7 @@ st.markdown(
     .home-cta { position: relative; overflow: hidden; margin: 46px 0 10px; padding: 32px 24px; text-align: center; border: 1px solid rgba(229, 50, 45, 0.20); border-radius: 20px; background: radial-gradient(circle at 50% 120%, rgba(229, 50, 45, 0.18), transparent 50%), var(--surface); }
     .home-cta h3 { margin: 0 0 7px !important; color: var(--text) !important; font-size: 1.25rem !important; font-weight: 800 !important; }
     .home-cta p { margin: 0; color: var(--text-muted); font-size: 0.8rem; line-height: 1.6; }
-    @media (max-width: 900px) { .home-tools-grid { grid-template-columns: 1fr; } .home-secondary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .home-workflow { grid-template-columns: 1fr; } .home-workflow-arrow { transform: rotate(90deg); } }
+    @media (max-width: 900px) { .home-tools-grid { grid-template-columns: 1fr; } .home-secondary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .home-workflow { flex-direction: column; } .home-workflow-arrow { transform: rotate(90deg); } }
     @media (max-width: 640px) { .home-hero { padding: 48px 17px 38px; border-radius: 18px; } .home-stats-grid, .home-features-grid, .home-secondary-grid { grid-template-columns: 1fr; } }
     </style>
     """,
@@ -230,9 +230,10 @@ render_html(
                 <div class="home-hero-badges">
                     <span class="home-hero-badge">Multi-LLM Mapping</span>
                     <span class="home-hero-badge">130 Audit Items</span>
+                    <span class="home-hero-badge">10+ Provider AI</span>
                     <span class="home-hero-badge">Bulk Image Processing</span>
                     <span class="home-hero-badge">Cloud Draft</span>
-                    <span class="home-hero-badge">OCR Reimburse</span>
+                    <span class="home-hero-badge">OCR Reimburse &rarr; Invoice</span>
                 </div>
             </div>
         </section>
@@ -341,7 +342,9 @@ render_html(
                     Upload sebulan foto struk (bensin, parkir, Teazzi) dan screenshot
                     Flazz/e-money. Model vision membaca tiap gambar, mengisi template
                     Excel reimburse secara kronologis, lalu menggabungkan semua bukti
-                    asli ke satu PDF tanpa kompresi.
+                    asli ke satu PDF tanpa kompresi &mdash; hasilnya
+                    <strong>Reimburse [Bulan] [Tahun].xlsx</strong> dan
+                    <strong>Invoice [Bulan] [Tahun].pdf</strong>.
                 </p>
                 <div class="home-tool-footer">
                     <span class="home-tool-tag">MODUL REIMBURSE</span>
@@ -364,7 +367,7 @@ render_html(
         </div>
         <div class="home-stat-card">
             <div class="home-stat-icon">&#129302;</div>
-            <div class="home-stat-value">5</div>
+            <div class="home-stat-value">10+</div>
             <div class="home-stat-label">Provider AI</div>
         </div>
         <div class="home-stat-card">
@@ -419,9 +422,25 @@ render_html(
         <div class="home-workflow-arrow">&rarr;</div>
 
         <div class="home-workflow-step">
-            <div class="home-workflow-icon">&#128194;</div>
-            <div class="home-workflow-title">Export Excel</div>
-            <div class="home-workflow-text">Tambahkan foto dan unduh laporan</div>
+            <div class="home-workflow-icon">&#128248;</div>
+            <div class="home-workflow-title">Foto QC</div>
+            <div class="home-workflow-text">Susun bukti ke sheet ATTACHMENT</div>
+        </div>
+
+        <div class="home-workflow-arrow">&rarr;</div>
+
+        <div class="home-workflow-step">
+            <div class="home-workflow-icon">&#129534;</div>
+            <div class="home-workflow-title">Scan Reimburse</div>
+            <div class="home-workflow-text">OCR struk &rarr; Excel + Invoice PDF</div>
+        </div>
+
+        <div class="home-workflow-arrow">&rarr;</div>
+
+        <div class="home-workflow-step">
+            <div class="home-workflow-icon">&#128202;</div>
+            <div class="home-workflow-title">Log &amp; Audit</div>
+            <div class="home-workflow-text">Pantau Audit Log &amp; Traffic Log</div>
         </div>
     </div>
     """
