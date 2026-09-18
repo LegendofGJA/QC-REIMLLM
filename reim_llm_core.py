@@ -44,7 +44,14 @@ def _get_secret(key: str, default: str = "") -> str:
 _PROVIDER_DEFS = [
     ("Kagiro", "KAGIRO", "https://api.kagiro.net/v1"),
     ("Bandel", "BANDEL", "https://bandelbanget.xyz/v1"),
-    ("9router", "ROUTER9", "https://rrakv37.abc-tunnel.us/v1"),
+    # URL endpoint 9router diisi lewat secrets (ROUTER9_BASE_URL) supaya alamat
+    # tunnel internal tidak ikut ter-commit ke repo publik.
+    ("9router", "ROUTER9", ""),
+    ("Cartridge", "CARTRIDGE", "https://router.cartridge.my.id/v1"),
+    ("Kenari", "KENARI", "https://kenari.id/v1/"),
+    ("GateAI", "GATEAI", "https://gateai.id/v1/"),
+    ("Juan", "JUAN", "https://router.juan.web.id/v1"),
+    ("SeekAI", "SEEKAI", "https://seekai.cc/v1/"),
 ]
 
 PROVIDERS = {}
@@ -59,6 +66,8 @@ del _name, _prefix, _default_url, _key
 
 # Fallback kalau endpoint /models tidak tersedia / kosong.
 FALLBACK_MODELS = [
+    "deepseek-v4.1-flash",
+    "cbai/deepseek-v4.1-flash",
     "qwen-vl-max",
     "qwen2.5-vl-72b-instruct",
     "qwen-vl-max-latest",
@@ -82,8 +91,13 @@ def _auth_headers(cfg: dict) -> dict:
 _VISION_HINTS = (
     "vl",
     "vision",
+    # DeepSeek V4.1 Flash mendukung input gambar (vision) di gateway yang
+    # menyediakannya, jadi ikut ditampilkan di dropdown OCR — termasuk varian
+    # bervendor-prefix seperti "cbai/deepseek-v4.1-flash".
+    "deepseek-v4.1-flash",
+    "deepseek-v4.1",
     # Catatan: TIDAK memakai hint generik "flash"/"deepseek", karena banyak
-    # model non-vision (mis. cbai/deepseek-v4.1-flash) ikut lolos padahal
+    # model non-vision (mis. cbai/deepseek-v4-flash) ikut lolos padahal
     # tidak bisa OCR gambar. Model vision di bawah ini dipilih lewat pola
     # id yang spesifik.
     "gpt-4o",  # gpt-4o sebenarnya multimodal, pertahankan sebagai vision hint
