@@ -840,6 +840,8 @@ def call_llm(
         raw = _call_byok(model, prompt)
     elif provider == "deepseek":
         raw = _call_deepseek(model, prompt)
+    elif provider in _PREFIX_TO_GATEWAY:
+        raw = _call_generic_gateway(provider, model, prompt)
     else:
         raise ValueError(f"Provider tidak dikenal: {provider}")
 
@@ -1087,4 +1089,67 @@ def _call_kagiro(model: str, prompt: str) -> str:
         return data["choices"][0]["message"]["content"]
     except (KeyError, IndexError):
         raise RuntimeError(f"Format respons Kagiro tidak dikenali: {str(data)[:300]}")
-        
+
+
+# Pemetaan kunci provider pendek (yang disimpan di current_models["provider"])
+# ke entri _GENERIC_GATEWAYS. Dipakai oleh _call_generic_gateway().
+_PREFIX_TO_GATEWAY = {
+    prefix.lower(): provider_name
+    for provider_name, (prefix, _default_url) in _GENERIC_GATEWAYS.items()
+}
+# Alias kunci pendek / varian penamaan agar tetap dikenali (termasuk nilai
+# lama yang pernah tersimpan di cache / .pyc).
+_PREFIX_TO_GATEWAY["9router"] = "9router Proxy"
+_PREFIX_TO_GATEWAY["router9"] = "9router Proxy"
+_PREFIX_TO_GATEWAY["cart"] = "Cartridge Proxy"
+_PREFIX_TO_GATEWAY["gate"] = "GateAI Proxy"
+
+
+def _call_generic_gateway(provider_key: str, model: str, prompt: str) -> str:
+    """Panggil gateway OpenAI-compatible generik yang didaftarkan di
+    _GENERIC_GATEWAYS (Cartridge / Kenari / GateAI / Juan / SeekAI / 9router).
+
+    Base URL diambil dari <PREFIX>_BASE_URL di secrets bila ada, kalau tidak
+    pakai default gateway. Polanya sama dengan Kagiro/Bandelbanget.
+    """
+    provider_name = _PREFIX_TO_GATEWAY.get(provider_key.lower())
+    if provider_name is None:
+        raise ValueError(f"Provider tidak dikenal: {provider_key}")
+
+    prefix, default_url = _GENERIC_GATEWAYS[provider_name]
+    base_url = _resolve_base_url(prefix, default_url)
+    if not base_url:
+        raise RuntimeError(
+            f"Base URL untuk {provider_name} belum diatur "
+            f"(isi {prefix}_BASE_URL di secrets)."
+        )
+
+    api_key = st.secrets.get(f"{prefix}_API_KEY", "")
+    if not api_key:
+        raise RuntimeError(f"{prefix}_API_KEY belum diatur di secrets.")
+
+    resp = requests.post(
+        f"{base_url}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "response_format": {"type": "json_object"},
+        },
+        timeout=120,
+    )
+    if resp.status_code == 429:
+        raise RuntimeError(
+            f"Kuota token {provider_name} habis atau terkena rate limit (429)."
+        )
+    resp.raise_for_status()
+    data = resp.json()
+    try:
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError):
+        raise RuntimeError(
+            f"Format respons {provider_name} tidak dikenali: {str(data)[:300]}"
+        )
