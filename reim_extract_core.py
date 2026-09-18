@@ -108,6 +108,26 @@ def build_description(item: dict) -> str:
 
 
 def parse_date_safe(raw):
+    """Parse tanggal struk Indonesia -> datetime.date, atau None.
+
+    ATURAN PENTING (penyebab bug "tanggal berantakan"):
+
+    Parser lama memakai `dayfirst=False, yearfirst=True`. Dua masalah:
+
+      1. `yearfirst=True` membuat tahun 2 digit dibaca sebagai AWAL string,
+         sehingga "2 Mar 26" -> 2002-03-26 dan "12/03/26" -> 2012-03-26.
+         Baris-baris ini lalu terlempar ke tahun 2002/2012 saat disort,
+         jadi urutan tanggal di Excel tampak kacau.
+      2. `dayfirst=False` menukar hari/bulan pada format numerik seperti
+         "12/03/2026" -> 2026-12-03 (12 Maret dibaca 3 Desember).
+
+    Solusi: parser berlapis, paling spesifik dulu.
+      - ISO `YYYY-MM-DD` (paling tidak ambigu) -> format eksplisit.
+      - `DD/MM/YYYY` dan `DD-MM-YYYY` (4 digit tahun) -> format eksplisit.
+      - Teks Indonesia ("2 Mar 2026", "02 Maret 26") -> dateutil dayfirst.
+      - Fallback terakhir: dateutil dayfirst + normalisasi tahun 2 digit.
+    Semua hasil selalu di-normalisasi supaya tahun 2 digit masuk abad 2000.
+    """
     if not raw:
         return None
     if isinstance(raw, (int, float)):
@@ -115,15 +135,105 @@ def parse_date_safe(raw):
     text = str(raw).strip()
     if not text:
         return None
-    try:
-        parsed = dateparser.parse(text, dayfirst=False, yearfirst=True)
-        return parsed.date() if parsed else None
-    except Exception:
+
+    # Normalisasi ringan: buang spasi ganda & ganti nama bulan Indonesia.
+    text = " ".join(text.split())
+    text = _id_month_to_num(text)
+
+    # 1) ISO / paling tidak ambigu: YYYY-MM-DD atau YYYY/MM/DD.
+    m = re.match(r"^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", text)
+    if m:
+        y, mo, d = (int(x) for x in m.groups())
+        dt = _safe_date(y, mo, d)
+        if dt:
+            return dt
+    # 1b) YYYYMMDD (8 digit rapat, format struk digital).
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", text)
+    if m:
+        y, mo, d = (int(x) for x in m.groups())
+        dt = _safe_date(y, mo, d)
+        if dt:
+            return dt
+
+    # 2) Numerik dengan tahun 4 digit -> eksplisit DD/MM/YYYY (gaya Indonesia).
+    m = re.match(r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$", text)
+    if m:
+        d, mo, y = (int(x) for x in m.groups())
+        dt = _safe_date(y, mo, d)
+        if dt:
+            return dt
+
+    # 3) Numerik dengan tahun 2 digit -> DD/MM/YY (gaya Indonesia),
+    #    tahun 2 digit dipetakan ke 2000-an.
+    m = re.match(r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$", text)
+    if m:
+        d, mo, y2 = (int(x) for x in m.groups())
+        dt = _safe_date(2000 + y2, mo, d)
+        if dt:
+            return dt
+
+    # 4) Teks bebas ("2 Mar 2026", "02 Maret 26", "Mar 2, 2026").
+    for kwargs in (
+        {"dayfirst": True, "yearfirst": False},
+        {"dayfirst": True},
+    ):
         try:
-            parsed = dateparser.parse(text, dayfirst=True)
-            return parsed.date() if parsed else None
+            parsed = dateparser.parse(text, **kwargs)
         except Exception:
-            return None
+            parsed = None
+        if parsed:
+            # yearfirst bug tidak terpakai di sini, tapi jaga-jaga: tahun 2 digit
+            # hasil dateutil kadang salah -> koreksi bila < 100 tahun terakhir.
+            y = parsed.year
+            if y < 100:
+                y += 2000
+            elif y < 1000:
+                pass
+            if 1900 <= y <= 2100:
+                try:
+                    return parsed.replace(year=y).date()
+                except ValueError:
+                    return parsed.date()
+    return None
+
+
+_ID_MONTHS = {
+    "jan": 1, "januari": 1,
+    "feb": 2, "februari": 2, "peb": 2, "pebruari": 2,
+    "mar": 3, "maret": 3,
+    "apr": 4, "april": 4,
+    "mei": 5, "may": 5,
+    "jun": 6, "juni": 6,
+    "jul": 7, "juli": 7,
+    "agu": 8, "ags": 8, "agustus": 8, "aug": 8,
+    "sep": 9, "sept": 9, "september": 9,
+    "okt": 10, "oktober": 10, "oct": 10,
+    "nov": 11, "november": 11,
+    "des": 12, "desember": 12, "dec": 12,
+}
+
+
+def _id_month_to_num(text: str) -> str:
+    """Ganti nama bulan Indonesia -> angka supaya dateutil konsisten.
+
+    Contoh: "2 Maret 2026" -> "2 3 2026", "02 Peb 26" -> "02 2 26"."""
+    def repl(match):
+        token = match.group(1).lower()
+        return str(_ID_MONTHS[token]) if token in _ID_MONTHS else match.group(1)
+
+    return re.sub(
+        r"\b([A-Za-z]+)\b", repl, text
+    )
+
+
+def _safe_date(year: int, month: int, day: int):
+    """Buat datetime.date dengan aman (hindari ValueError)."""
+    from datetime import date as _date
+
+    try:
+        return _date(year, month, day)
+    except ValueError:
+        return None
 
 
 def parse_time_safe(raw):
