@@ -276,19 +276,51 @@ def _to_date(d):
     return d if d else __import__("datetime").date.max
 
 
+def _as_date(v):
+    """Normalisasi apa pun -> datetime.date atau None.
+
+    Penting untuk stabilitas sort: OCR/dateutil kadang menghasilkan
+    `datetime.datetime` (bukan `date`), dan mencampur date dengan datetime di
+    dalam tuple sort bisa memicu TypeError sehingga pandas diam-diam tidak
+    mengurutkan. Semua dijadikan `date` murni lebih dulu.
+    """
+    import datetime as _dt
+
+    if v is None or _is_na(v):
+        return None
+    if isinstance(v, _dt.datetime):
+        return v.date()
+    if isinstance(v, _dt.date):
+        return v
+    return parse_date_safe(v)
+
+
+def _time_seconds(v):
+    """time (timedelta / time / str) -> detik sejak 00:00, atau -1 bila kosong."""
+    import datetime as _dt
+
+    if v is None or _is_na(v):
+        return -1
+    if isinstance(v, _dt.timedelta):
+        return int(v.total_seconds())
+    if isinstance(v, _dt.time):
+        return v.hour * 3600 + v.minute * 60 + v.second
+    td = parse_time_safe(v)
+    if td is None:
+        return -1
+    return int(td.total_seconds())
+
+
 def _sort_datetime(item):
-    """Kunci sort gabungan: (date_obj atau date.max, time dalam detik atau -1).
+    """Kunci sort gabungan: (date_obj atau date.max, detik atau -1).
+
     -1 dipakai untuk baris tanpa jam agar baris berjam muncul duluan di hari
-    yang sama (urutan waktu memang tidak lengkap untuk baris tanpa jam)."""
-    d = item.get("date")
-    if not d or _is_na(d):
-        d = __import__("datetime").date.max
-    t = item.get("time")
-    if t is None or _is_na(t):
-        secs = -1
-    else:
-        secs = int(getattr(t, "total_seconds", lambda: 0)())
-    return (d, secs)
+    yang sama. Selalu mengembalikan tuple berisi (date, int) yang homogen
+    supaya perbandingan antar-baris tidak pernah gagal."""
+    import datetime as _dt
+
+    d = _as_date(item.get("date")) or _dt.date.max
+    return (d, _time_seconds(item.get("time")))
 
 
 def _is_na(v):
@@ -338,13 +370,17 @@ def build_rows(extracted_items: list) -> list:
                 "location_name": (item.get("location_name") or "").strip(),
             }
         )
+
+    # Sort deterministik pakai Python murni (bukan df.sort_values atas kolom
+    # tuple). `list.sort` bersifat STABLE, jadi baris dengan tanggal & jam sama
+    # mempertahankan urutan asli input — tidak pernah "melompat" antar-rerun.
+    rows.sort(key=_sort_datetime)
+
     df = pd.DataFrame(rows)
     if df.empty:
-        return df
-    df["_sort_key"] = df.apply(_sort_datetime, axis=1)
-    df = df.sort_values("_sort_key", kind="stable").drop(columns=["_sort_key"])
-    df = df.reset_index(drop=True)
-    return df
+        # Pastikan kolom tetap ada walau tanpa baris.
+        return pd.DataFrame(columns=["date", "time", "category", "description", "nominal", "location_name"])
+    return df.reset_index(drop=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────
