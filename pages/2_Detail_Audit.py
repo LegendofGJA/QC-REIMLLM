@@ -67,8 +67,49 @@ st.markdown(
         justify-content: center !important;
         margin: 0 !important;
     }
+    /* ── Tombol gulir cepat (scroll to top / bottom) ── */
+    .scroll-nav-btn {
+        position: fixed;
+        right: 18px;
+        z-index: 9998;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--surface);
+        color: var(--accent);
+        border: 1px solid var(--border);
+        box-shadow: 0 3px 14px rgba(0,0,0,0.28);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        line-height: 1;
+        text-decoration: none !important;
+        transition: transform .12s ease, background .12s ease;
+    }
+    .scroll-nav-btn:hover {
+        background: var(--accent);
+        color: #fff;
+        transform: translateY(-1px);
+    }
+    .scroll-nav-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+    .scroll-top-btn { top: 14px; }
+    .scroll-bottom-btn { bottom: 14px; }
     </style>
     """,
+    unsafe_allow_html=True,
+)
+
+# Penanda jangkar untuk tombol gulir ke atas/bawah
+st.markdown(
+    "<span id='page-top'></span>"
+    "<a class='scroll-nav-btn scroll-top-btn' href='#page-top' "
+    "title='Ke atas' aria-label='Gulir ke atas'>&#9650;</a>"
+    "<a class='scroll-nav-btn scroll-bottom-btn' href='#page-bottom' "
+    "title='Ke bawah' aria-label='Gulir ke bawah'>&#9660;</a>",
     unsafe_allow_html=True,
 )
 
@@ -303,7 +344,7 @@ m1.metric("TOTAL SCORE (E184)", round(result["grand_percent_sum"], 2))
 m2.metric("FINAL SCORE", round(result["final_score"], 2))
 m3.metric("GRADING", result["grade"])
 
-st.markdown("<div style='height:110px'></div>", unsafe_allow_html=True)
+st.markdown("<div style=\"height:110px\"></div><span id='page-bottom'></span>", unsafe_allow_html=True)
 
 # ── Format score untuk log (Save & Download pakai ini) ──
 _score_str = f"{round(result['final_score'], 2)}, {result['grade']}"
