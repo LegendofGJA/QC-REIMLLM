@@ -138,3 +138,83 @@ def gps_location_name(file_bytes: bytes) -> str:
         return _location_for_coords(float(info["lat"]), float(info["lon"]))
     except (TypeError, ValueError):
         return ""
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Reverse geocode ringkas: koordinat EXIF -> "Nama Jalan, Kota"
+# ─────────────────────────────────────────────────────────────────────────
+
+_ADDRESS_CACHE = {}
+
+
+def _short_address_for_coords(lat: float, lon: float) -> str:
+    """Ubah koordinat jadi 'Nama Jalan, Kota' (tanpa koordinat mentah).
+
+    Hanya memakai komponen alamat: road / pedestrian / suburb + city /
+    town / municipality / county. Return '' bila gagal / offline.
+    Hasil di-cache per proses supaya tidak memanggil berulang kali.
+    """
+    key = (round(lat, 5), round(lon, 5))
+    if key in _ADDRESS_CACHE:
+        return _ADDRESS_CACHE[key]
+
+    result = ""
+    try:
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "format": "json",
+            "zoom": 18,
+            "addressdetails": 1,
+            "accept-language": "id",
+        }
+        r = requests.get(
+            url,
+            params=params,
+            headers={"User-Agent": "reimburse-ocr/1.0"},
+            timeout=8,
+        )
+        if r.status_code == 200:
+            addr = (r.json().get("address") or {})
+
+            road = (
+                addr.get("road")
+                or addr.get("pedestrian")
+                or addr.get("footway")
+                or addr.get("path")
+                or addr.get("residential")
+                or addr.get("neighbourhood")
+            )
+            city = (
+                addr.get("city")
+                or addr.get("town")
+                or addr.get("municipality")
+                or addr.get("county")
+                or addr.get("city_district")
+                or addr.get("village")
+                or addr.get("suburb")
+            )
+
+            parts = [p for p in (road, city) if p]
+            # buang duplikat kalau road == city
+            if len(parts) == 2 and parts[0].strip().lower() == parts[1].strip().lower():
+                parts = [parts[0]]
+            result = ", ".join(str(p).strip() for p in parts)
+        time.sleep(1)  # sopan ke Nominatim (batas 1 req/detik)
+    except Exception:
+        result = ""
+
+    _ADDRESS_CACHE[key] = result
+    return result
+
+
+def gps_short_address(file_bytes: bytes) -> str:
+    """Return 'Nama Jalan, Kota' dari GPS EXIF ('' bila tak ada/kosong)."""
+    info = read_gps(file_bytes)
+    if not info:
+        return ""
+    try:
+        return _short_address_for_coords(float(info["lat"]), float(info["lon"]))
+    except (TypeError, ValueError):
+        return ""
