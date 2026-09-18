@@ -24,7 +24,7 @@ from reim_extract_core import (
     receipt_sort_key,
 )
 from reim_gps_core import gps_location_name, read_gps
-from reim_llm_core import PROVIDERS, fetch_vision_models, ping_model
+from reim_llm_core import PROVIDERS, fetch_all_models, fetch_vision_models, ping_model
 from reim_llm_core import call_vision
 from reim_pdf_core import merge_images_to_pdf
 
@@ -81,6 +81,11 @@ DEFAULTS = {
     "flazz_rows": [],
     "flazz_kept": [],
     "flazz_skipped": 0,
+    "reim_file_sig": None,
+    "reim_excel_bytes": None,
+    "reim_excel_err": None,
+    "reim_pdf_bytes": None,
+    "reim_pdf_err": None,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state:
@@ -94,33 +99,57 @@ st.subheader("Pemilihan Provider OCR")
 
 provider_name = st.selectbox("Pilih Provider OCR", list(PROVIDERS.keys()))
 
-# Daftar model vision di-cache per provider supaya rerun Streamlit (mis. ganti
+# Mode daftar model:
+#   - "Vision saja"  : hasil scan /models difilter buang model non-vision
+#                       (embedding/tts/rerank/dsb) — default.
+#   - "Semua model"  : seluruh model asli dari server, tanpa filter apa pun.
+#                       Dipakai kalau model vision yang dicari tidak terdeteksi
+#                       otomatis (mis. id tidak lazim).
+mode_col, ref_col = st.columns([3, 1])
+with mode_col:
+    model_mode = st.radio(
+        "Tampilkan model",
+        ["Vision saja (rekomendasi OCR)", "Semua model dari server"],
+        horizontal=True,
+    )
+with ref_col:
+    refresh_clicked = st.button("🔄 Refresh daftar model", use_container_width=True)
+
+_show_all = model_mode.startswith("Semua")
+# Daftar model di-cache per provider per mode supaya rerun Streamlit (mis. ganti
 # widget) tidak memanggil ulang endpoint /models berulang-ulang.
-_models_cache_key = f"vision_models_{provider_name}"
-if _models_cache_key not in st.session_state:
+_models_cache_key = f"reim_models_{provider_name}_{'all' if _show_all else 'vision'}"
+if refresh_clicked or _models_cache_key not in st.session_state:
     try:
-        st.session_state[_models_cache_key] = fetch_vision_models(provider_name)
+        if _show_all:
+            st.session_state[_models_cache_key] = fetch_all_models(provider_name)
+        else:
+            st.session_state[_models_cache_key] = fetch_vision_models(provider_name)
     except Exception as e:
         st.session_state[_models_cache_key] = []
         st.warning(f"Gagal mengambil daftar model: {e}")
 
 available_models = st.session_state[_models_cache_key]
 
-ref_col, model_col = st.columns([1, 3])
-with ref_col:
-    refresh_clicked = st.button("🔄 Refresh daftar model")
-with model_col:
-    selected_model = st.selectbox(
-        "Pilih Model Vision",
-        available_models if available_models else ["Model tidak tersedia"],
+selected_model = st.selectbox(
+    "Pilih Model Vision",
+    available_models if available_models else ["Model tidak tersedia"],
+)
+
+if available_models:
+    _shown = len(available_models)
+    st.caption(
+        f"✅ Terdeteksi **{_shown} model** dari server `{PROVIDERS[provider_name]['base_url']}`."
+        + ("" if _show_all else " (disaring: model non-vision seperti embedding/tts dibuang)")
+    )
+else:
+    st.warning(
+        "Tidak ada model yang terdeteksi dari server ini. Cek API Key/Base URL, "
+        "atau coba mode **Semua model dari server** lalu tekan **Refresh**."
     )
 
-if refresh_clicked:
-    st.session_state.pop(_models_cache_key, None)
-    st.rerun()
-
 st.caption(
-    "Daftar hanya model **vision** (bisa baca gambar). Tidak ada ping otomatis — "
+    "Daftar diambil langsung dari endpoint `/models` provider. Tidak ada ping otomatis — "
     "kalau ingin menguji model terpilih, pakai tombol Cek API Hidup di bawah."
 )
 
@@ -340,6 +369,8 @@ if st.button("🚀 Mulai Proses OCR, Sorting, Generate Excel & PDF", type="prima
         st.session_state.failed_scans = [fname for fname, _ in failures]
         st.session_state.flazz_kept = flazz_kept
         st.session_state.flazz_skipped = flazz_skipped
+        # Paksa generate ulang Excel/PDF untuk data baru.
+        st.session_state.reim_file_sig = None
 
         msg = f"Ekstraksi selesai: {len(extracted_items)} struk fisik, {len(flazz_kept)} transaksi Flazz ditambahkan"
         if flazz_skipped:
@@ -371,38 +402,96 @@ if st.session_state.extracted_items:
                     + (f" (diambil {g['timestamp']})" if g.get("timestamp") else "")
                 )
 
-    excel_bytes = fill_excel_template(
-        df,
-        TEMPLATE_PATH,
-        {"name": name, "department": department, "purpose": purpose, "bank_acc": bank_acc},
+    # ── Generate & cache file sekali per data ────────────────────────────────
+    # BUG LAMA: fill_excel_template / merge_images_to_pdf dipanggil di SETIAP
+    # rerun Streamlit. Karena tombol download memicu rerun, byte-nya dibuat lagi
+    # dari nol, dan kadang klik "ketelan" (download tidak jalan) atau file
+    # ter-download tidak konsisten. Solusi: hitung sekali, simpan di
+    # session_state dengan tanda tangan (signature) data; tombol download pakai
+    # byte yang stabil + key tetap.
+    _excel_sig = (
+        len(df),
+        f"{df['nominal'].sum():.2f}",
+        str(df["date"].iloc[0]) if len(df) else "",
+        str(df["date"].iloc[-1]) if len(df) else "",
+        name,
+        department,
+        purpose,
+        bank_acc,
     )
+    _pdf_sig = (len(st.session_state.get("ordered_pdf_images") or []),)
+    _sig = ("excel", _excel_sig, "pdf", _pdf_sig)
 
-    dcol1, dcol2 = st.columns(2)
-    with dcol1:
-        st.download_button(
-            "📥 Download Excel Reimburse",
-            data=excel_bytes,
-            file_name=f"FORM_REIMBURSE_{date.today().strftime('%Y%m')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-    with dcol2:
-        # PDF dibuat terpisah: kalau gagal, Excel tetap bisa diunduh.
+    if st.session_state.get("reim_file_sig") != _sig:
+        excel_bytes = None
+        excel_err = None
+        try:
+            excel_bytes = fill_excel_template(
+                df,
+                TEMPLATE_PATH,
+                {
+                    "name": name,
+                    "department": department,
+                    "purpose": purpose,
+                    "bank_acc": bank_acc,
+                },
+            )
+        except Exception as e:  # pragma: no cover - tergantung file template
+            excel_err = str(e)
+
+        pdf_bytes = None
+        pdf_err = None
         try:
             ordered_images = st.session_state.get("ordered_pdf_images") or []
-            pdf_bytes = merge_images_to_pdf(ordered_images)
-            if pdf_bytes:
-                st.download_button(
-                    "📥 Download PDF Bukti Gabungan (tanpa kompresi)",
-                    data=pdf_bytes,
-                    file_name=f"Bukti_Gabungan_{date.today().strftime('%Y%m')}.pdf",
-                    mime="application/pdf",
-                    help="Urutan halaman: struk kronologis → screenshot Flazz → foto gagal scan.",
-                )
-            else:
-                st.caption("Tidak ada gambar bukti untuk PDF.")
-        except Exception as e:
-            st.error(f"Gagal membuat PDF gabungan: {e}")
+            if ordered_images:
+                pdf_bytes = merge_images_to_pdf(ordered_images)
+        except Exception as e:  # pragma: no cover
+            pdf_err = str(e)
+
+        st.session_state.reim_file_sig = _sig
+        st.session_state.reim_excel_bytes = excel_bytes
+        st.session_state.reim_excel_err = excel_err
+        st.session_state.reim_pdf_bytes = pdf_bytes
+        st.session_state.reim_pdf_err = pdf_err
+
+    excel_bytes = st.session_state.get("reim_excel_bytes")
+    excel_err = st.session_state.get("reim_excel_err")
+    pdf_bytes = st.session_state.get("reim_pdf_bytes")
+    pdf_err = st.session_state.get("reim_pdf_err")
+
+    _month_tag = date.today().strftime("%Y%m")
+    dcol1, dcol2 = st.columns(2)
+    with dcol1:
+        if excel_bytes:
+            st.download_button(
+                "📥 Download Excel Reimburse",
+                data=excel_bytes,
+                file_name=f"FORM_REIMBURSE_{_month_tag}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="reim_dl_excel",
+                on_click="ignore",
+                use_container_width=True,
+            )
+        else:
+            st.error(f"Gagal membuat Excel: {excel_err}")
+    with dcol2:
+        # PDF dibuat terpisah: kalau gagal, Excel tetap bisa diunduh.
+        if pdf_err:
+            st.error(f"Gagal membuat PDF gabungan: {pdf_err}")
             st.caption("Excel tetap bisa diunduh di kiri.")
+        elif pdf_bytes:
+            st.download_button(
+                "📥 Download PDF Bukti Gabungan (tanpa kompresi)",
+                data=pdf_bytes,
+                file_name=f"Bukti_Gabungan_{_month_tag}.pdf",
+                mime="application/pdf",
+                key="reim_dl_pdf",
+                on_click="ignore",
+                use_container_width=True,
+                help="Urutan halaman: struk kronologis → screenshot Flazz → foto gagal scan.",
+            )
+        else:
+            st.caption("Tidak ada gambar bukti untuk PDF.")
 
     failed_scans = st.session_state.get("failed_scans") or []
     if failed_scans:
