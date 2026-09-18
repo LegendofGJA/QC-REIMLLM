@@ -68,6 +68,27 @@ st.markdown(
         margin: 0 !important;
     }
     /* ── Tombol gulir cepat (scroll to top / bottom) ── */
+    /* Wadah keyed: diposisikan fixed agar tidak ikut ter-scroll. */
+    div.st-key-scroll_nav {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        pointer-events: none;
+        z-index: 9998;
+        overflow: visible !important;
+    }
+    div.st-key-scroll_nav > div,
+    div.st-key-scroll_nav [data-testid="stVerticalBlock"],
+    div.st-key-scroll_nav [data-testid="stMarkdownContainer"] {
+        position: static !important;
+        pointer-events: none;
+    }
     .scroll-nav-btn {
         position: fixed;
         right: 18px;
@@ -85,6 +106,7 @@ st.markdown(
         font-size: 1.05rem;
         line-height: 1;
         text-decoration: none !important;
+        pointer-events: auto;
         transition: transform .12s ease, background .12s ease;
     }
     .scroll-nav-btn:hover {
@@ -103,15 +125,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Penanda jangkar untuk tombol gulir ke atas/bawah
-st.markdown(
-    "<span id='page-top'></span>"
-    "<a class='scroll-nav-btn scroll-top-btn' href='#page-top' "
-    "title='Ke atas' aria-label='Gulir ke atas'>&#9650;</a>"
-    "<a class='scroll-nav-btn scroll-bottom-btn' href='#page-bottom' "
-    "title='Ke bawah' aria-label='Gulir ke bawah'>&#9660;</a>",
-    unsafe_allow_html=True,
-)
+# Jangkar di alur dokumen biasa (target scroll harus berada di alur, bukan di kotak fixed)
+st.markdown("<span id='page-top'></span>", unsafe_allow_html=True)
+
+# Tombol gulir ke atas/bawah (wadah keyed agar fixed-nya stabil & tidak ter-scroll)
+with st.container(key="scroll_nav"):
+    st.markdown(
+        "<a class='scroll-nav-btn scroll-top-btn' href='#page-top' "
+        "title='Ke atas' aria-label='Gulir ke atas'>&#9650;</a>"
+        "<a class='scroll-nav-btn scroll-bottom-btn' href='#page-bottom' "
+        "title='Ke bawah' aria-label='Gulir ke bawah'>&#9660;</a>",
+        unsafe_allow_html=True,
+    )
 
 structure = load_structure()
 supabase = get_supabase_client()
