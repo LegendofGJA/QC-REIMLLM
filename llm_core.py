@@ -18,10 +18,26 @@ from audit_core import load_structure
 PROVIDER_LIST = [
     "Kagiro Proxy",
     "Bandelbanget Proxy",
+    "Cartridge Proxy",
+    "Kenari Proxy",
+    "GateAI Proxy",
+    "Juan Proxy",
+    "SeekAI Proxy",
     "DeepSeek (Direct)",
     "Gemini (Direct)",
     "BYOK (Custom)",
 ]
+
+
+# Gateway OpenAI-compatible generik: {nama_provider: (prefix_secret, base_url)}.
+# Prefix dipakai untuk membaca <PREFIX>_API_KEY dari st.secrets.
+_GENERIC_GATEWAYS = {
+    "Cartridge Proxy": ("CARTRIDGE", "https://router.cartridge.my.id/v1"),
+    "Kenari Proxy": ("KENARI", "https://kenari.id/v1/"),
+    "GateAI Proxy": ("GATEAI", "https://gateai.id/v1/"),
+    "Juan Proxy": ("JUAN", "https://router.juan.web.id/v1"),
+    "SeekAI Proxy": ("SEEKAI", "https://seekai.cc/v1/"),
+}
 
 
 MODEL_METADATA = {
@@ -50,6 +66,10 @@ MODEL_METADATA = {
     "kagiro/glm5-3": "GLM 5.3 (K-A) [6x]",
     "kagiro/gemini-3-7-flash": "Gemini 3.7 Flash (K-B) [3x]",
     "kagiro/deepseek-v4-flash": "DeepSeek V4 Flash (K-B) [1.7x]",
+
+    # DeepSeek V4.1 Flash (vision) — tersedia di gateway yang mendukung gambar
+    "deepseek-v4.1-flash": "DeepSeek V4.1 Flash (Vision)",
+    "cbai/deepseek-v4.1-flash": "DeepSeek V4.1 Flash (cbai) (Vision)",
 }
 
 
@@ -108,6 +128,36 @@ FALLBACK_MODELS = {
         "Gemini 2.5 Flash-Lite (Direct)": {
             "provider": "gemini",
             "model": "gemini-flash-lite-latest",
+        },
+    },
+    "Cartridge Proxy": {
+        "DeepSeek V4.1 Flash (Vision)": {
+            "provider": "cartridge",
+            "model": "deepseek-v4.1-flash",
+        },
+    },
+    "Kenari Proxy": {
+        "DeepSeek V4.1 Flash (Vision)": {
+            "provider": "kenari",
+            "model": "deepseek-v4.1-flash",
+        },
+    },
+    "GateAI Proxy": {
+        "DeepSeek V4.1 Flash (Vision)": {
+            "provider": "gateai",
+            "model": "deepseek-v4.1-flash",
+        },
+    },
+    "Juan Proxy": {
+        "DeepSeek V4.1 Flash (Vision)": {
+            "provider": "juan",
+            "model": "deepseek-v4.1-flash",
+        },
+    },
+    "SeekAI Proxy": {
+        "DeepSeek V4.1 Flash (Vision)": {
+            "provider": "seekai",
+            "model": "deepseek-v4.1-flash",
         },
     },
 }
@@ -299,6 +349,49 @@ def fetch_provider_models(
 
                             scanned_models[f"✅ {label}"] = {
                                 "provider": "byok",
+                                "model": model_id,
+                            }
+
+            except Exception:
+                pass
+
+    elif provider_name in _GENERIC_GATEWAYS:
+        # Gateway OpenAI-compatible generik (Cartridge / Kenari / GateAI /
+        # Juan / SeekAI). Pola sama dengan Kagiro: ambil /models lalu ping
+        # tiap model sebelum ditampilkan.
+        prefix, base_url = _GENERIC_GATEWAYS[provider_name]
+        api_key = st.secrets.get(f"{prefix}_API_KEY", "")
+
+        if api_key:
+            try:
+                response = requests.get(
+                    f"{base_url.rstrip('/')}/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=8,
+                )
+
+                if response.status_code == 200:
+                    raw_models = [
+                        model.get("id")
+                        for model in response.json().get("data", [])
+                        if model.get("id")
+                    ]
+
+                    for model_id in raw_models:
+                        is_active = _ping_model(
+                            f"{base_url.rstrip('/')}/chat/completions",
+                            api_key,
+                            model_id,
+                        )
+
+                        if is_active:
+                            label = MODEL_METADATA.get(
+                                model_id,
+                                f"{provider_name} — {model_id}",
+                            )
+
+                            scanned_models[f"✅ {label}"] = {
+                                "provider": prefix.lower(),
                                 "model": model_id,
                             }
 
