@@ -341,12 +341,12 @@ st.markdown("---")
 
 c1, c2 = st.columns(2)
 with c1:
-    st.session_state["store_name"] = st.text_input("STORE NAME", value=st.session_state["store_name"])
-    st.session_state["date1"] = st.text_input("DATE", value=st.session_state["date1"])
-    st.session_state["date2"] = st.text_input("DATE (2)", value=st.session_state["date2"])
+    st.text_input("STORE NAME", key="store_name")
+    st.text_input("DATE", key="date1")
+    st.text_input("DATE (2)", key="date2")
 with c2:
-    st.session_state["auditor"] = st.text_input("AUDITOR", value=st.session_state["auditor"])
-    st.session_state["pic_on_duty"] = st.text_input("PIC ON DUTY", value=st.session_state["pic_on_duty"])
+    st.text_input("AUDITOR", key="auditor")
+    st.text_input("PIC ON DUTY", key="pic_on_duty")
 
 st.markdown("---")
 
