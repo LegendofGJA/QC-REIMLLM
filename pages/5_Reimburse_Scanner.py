@@ -81,11 +81,14 @@ DEFAULTS = {
     "flazz_rows": [],
     "flazz_kept": [],
     "flazz_skipped": 0,
-    "reim_file_sig": None,
     "reim_excel_bytes": None,
     "reim_excel_err": None,
+    "reim_excel_sig": None,
+    "reim_excel_ready": False,
     "reim_pdf_bytes": None,
     "reim_pdf_err": None,
+    "reim_pdf_sig": None,
+    "reim_pdf_ready": False,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state:
@@ -369,8 +372,13 @@ if st.button("🚀 Mulai Proses OCR, Sorting, Generate Excel & PDF", type="prima
         st.session_state.failed_scans = [fname for fname, _ in failures]
         st.session_state.flazz_kept = flazz_kept
         st.session_state.flazz_skipped = flazz_skipped
-        # Paksa generate ulang Excel/PDF untuk data baru.
-        st.session_state.reim_file_sig = None
+        # Data baru -> hasil Excel/PDF lama tidak valid, wajib proses ulang.
+        st.session_state.reim_excel_ready = False
+        st.session_state.reim_excel_sig = None
+        st.session_state.reim_excel_bytes = None
+        st.session_state.reim_pdf_ready = False
+        st.session_state.reim_pdf_sig = None
+        st.session_state.reim_pdf_bytes = None
 
         msg = f"Ekstraksi selesai: {len(extracted_items)} struk fisik, {len(flazz_kept)} transaksi Flazz ditambahkan"
         if flazz_skipped:
@@ -402,13 +410,11 @@ if st.session_state.extracted_items:
                     + (f" (diambil {g['timestamp']})" if g.get("timestamp") else "")
                 )
 
-    # ── Generate & cache file sekali per data ────────────────────────────────
-    # BUG LAMA: fill_excel_template / merge_images_to_pdf dipanggil di SETIAP
-    # rerun Streamlit. Karena tombol download memicu rerun, byte-nya dibuat lagi
-    # dari nol, dan kadang klik "ketelan" (download tidak jalan) atau file
-    # ter-download tidak konsisten. Solusi: hitung sekali, simpan di
-    # session_state dengan tanda tangan (signature) data; tombol download pakai
-    # byte yang stabil + key tetap.
+    # ── Proses Excel & PDF secara manual → baru muncul tombol download ───────
+    # Tombol "Proses" menghasilkan file sekali; hasilnya disimpan di
+    # session_state. Tombol "Download" baru muncul SETELAH proses selesai,
+    # sehingga klik download tidak pernah "ketelan" dan byte-nya stabil
+    # (tidak dibuat ulang di tengah rerun).
     _excel_sig = (
         len(df),
         f"{df['nominal'].sum():.2f}",
@@ -420,52 +426,56 @@ if st.session_state.extracted_items:
         bank_acc,
     )
     _pdf_sig = (len(st.session_state.get("ordered_pdf_images") or []),)
-    _sig = ("excel", _excel_sig, "pdf", _pdf_sig)
 
-    if st.session_state.get("reim_file_sig") != _sig:
-        excel_bytes = None
-        excel_err = None
-        try:
-            excel_bytes = fill_excel_template(
-                df,
-                TEMPLATE_PATH,
-                {
-                    "name": name,
-                    "department": department,
-                    "purpose": purpose,
-                    "bank_acc": bank_acc,
-                },
-            )
-        except Exception as e:  # pragma: no cover - tergantung file template
-            excel_err = str(e)
-
-        pdf_bytes = None
-        pdf_err = None
-        try:
-            ordered_images = st.session_state.get("ordered_pdf_images") or []
-            if ordered_images:
-                pdf_bytes = merge_images_to_pdf(ordered_images)
-        except Exception as e:  # pragma: no cover
-            pdf_err = str(e)
-
-        st.session_state.reim_file_sig = _sig
-        st.session_state.reim_excel_bytes = excel_bytes
-        st.session_state.reim_excel_err = excel_err
-        st.session_state.reim_pdf_bytes = pdf_bytes
-        st.session_state.reim_pdf_err = pdf_err
-
-    excel_bytes = st.session_state.get("reim_excel_bytes")
-    excel_err = st.session_state.get("reim_excel_err")
-    pdf_bytes = st.session_state.get("reim_pdf_bytes")
-    pdf_err = st.session_state.get("reim_pdf_err")
+    st.divider()
+    st.markdown("#### Proses & unduh hasil")
+    st.caption(
+        "Klik **Proses Excel** / **Proses PDF** dulu. Kalau proses selesai, "
+        "tombol **Download** akan muncul."
+    )
 
     _month_tag = date.today().strftime("%Y%m")
-    dcol1, dcol2 = st.columns(2)
-    with dcol1:
-        if excel_bytes:
+    pcol1, pcol2 = st.columns(2)
+
+    # ── Excel ────────────────────────────────────────────────────────────────
+    with pcol1:
+        if st.button(
+            "📊 Proses Excel",
+            key="reim_proc_excel",
+            use_container_width=True,
+            type="primary",
+        ):
+            with st.spinner("Membuat file Excel…"):
+                try:
+                    st.session_state.reim_excel_bytes = fill_excel_template(
+                        df,
+                        TEMPLATE_PATH,
+                        {
+                            "name": name,
+                            "department": department,
+                            "purpose": purpose,
+                            "bank_acc": bank_acc,
+                        },
+                    )
+                    st.session_state.reim_excel_err = None
+                    st.session_state.reim_excel_sig = _excel_sig
+                    st.session_state.reim_excel_ready = True
+                except Exception as e:  # pragma: no cover - tergantung template
+                    st.session_state.reim_excel_bytes = None
+                    st.session_state.reim_excel_err = str(e)
+                    st.session_state.reim_excel_ready = False
+
+        _excel_stale = st.session_state.get("reim_excel_sig") != _excel_sig
+        if _excel_stale:
+            st.session_state.reim_excel_ready = False
+
+        if st.session_state.get("reim_excel_err"):
+            st.error(f"Gagal membuat Excel: {st.session_state.reim_excel_err}")
+        elif st.session_state.get("reim_excel_ready") and not _excel_stale:
+            st.success("Excel siap.")
             st.download_button(
                 "📥 Download Excel Reimburse",
-                data=excel_bytes,
+                data=st.session_state.reim_excel_bytes,
                 file_name=f"FORM_REIMBURSE_{_month_tag}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="reim_dl_excel",
@@ -473,16 +483,46 @@ if st.session_state.extracted_items:
                 use_container_width=True,
             )
         else:
-            st.error(f"Gagal membuat Excel: {excel_err}")
-    with dcol2:
-        # PDF dibuat terpisah: kalau gagal, Excel tetap bisa diunduh.
-        if pdf_err:
-            st.error(f"Gagal membuat PDF gabungan: {pdf_err}")
-            st.caption("Excel tetap bisa diunduh di kiri.")
-        elif pdf_bytes:
+            st.caption("Belum diproses.")
+
+    # ── PDF ──────────────────────────────────────────────────────────────────
+    with pcol2:
+        _ordered_images = st.session_state.get("ordered_pdf_images") or []
+        _has_images = bool(_ordered_images)
+
+        if st.button(
+            "🧾 Proses PDF",
+            key="reim_proc_pdf",
+            use_container_width=True,
+            type="primary",
+            disabled=not _has_images,
+            help=None if _has_images else "Tidak ada gambar bukti untuk PDF.",
+        ):
+            with st.spinner("Menggabungkan PDF (tanpa kompresi)…"):
+                try:
+                    st.session_state.reim_pdf_bytes = merge_images_to_pdf(
+                        _ordered_images
+                    )
+                    st.session_state.reim_pdf_err = None
+                    st.session_state.reim_pdf_sig = _pdf_sig
+                    st.session_state.reim_pdf_ready = True
+                except Exception as e:  # pragma: no cover
+                    st.session_state.reim_pdf_bytes = None
+                    st.session_state.reim_pdf_err = str(e)
+                    st.session_state.reim_pdf_ready = False
+
+        _pdf_stale = st.session_state.get("reim_pdf_sig") != _pdf_sig
+        if _pdf_stale:
+            st.session_state.reim_pdf_ready = False
+
+        if st.session_state.get("reim_pdf_err"):
+            st.error(f"Gagal membuat PDF: {st.session_state.reim_pdf_err}")
+            st.caption("Excel tetap bisa diproses & diunduh di kiri.")
+        elif st.session_state.get("reim_pdf_ready") and not _pdf_stale:
+            st.success("PDF siap.")
             st.download_button(
                 "📥 Download PDF Bukti Gabungan (tanpa kompresi)",
-                data=pdf_bytes,
+                data=st.session_state.reim_pdf_bytes,
                 file_name=f"Bukti_Gabungan_{_month_tag}.pdf",
                 mime="application/pdf",
                 key="reim_dl_pdf",
@@ -490,8 +530,10 @@ if st.session_state.extracted_items:
                 use_container_width=True,
                 help="Urutan halaman: struk kronologis → screenshot Flazz → foto gagal scan.",
             )
-        else:
+        elif not _has_images:
             st.caption("Tidak ada gambar bukti untuk PDF.")
+        else:
+            st.caption("Belum diproses.")
 
     failed_scans = st.session_state.get("failed_scans") or []
     if failed_scans:
