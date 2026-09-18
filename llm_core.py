@@ -23,6 +23,7 @@ PROVIDER_LIST = [
     "GateAI Proxy",
     "Juan Proxy",
     "SeekAI Proxy",
+    "9router Proxy",
     "DeepSeek (Direct)",
     "Gemini (Direct)",
     "BYOK (Custom)",
@@ -30,14 +31,27 @@ PROVIDER_LIST = [
 
 
 # Gateway OpenAI-compatible generik: {nama_provider: (prefix_secret, base_url)}.
-# Prefix dipakai untuk membaca <PREFIX>_API_KEY dari st.secrets.
+# Prefix dipakai untuk membaca <PREFIX>_API_KEY dari st.secrets. base_url boleh
+# string kosong -> berarti URL diambil dari <PREFIX>_BASE_URL di secrets (dipakai
+# 9router yang alamat tunnel-nya tidak boleh di-hardcode ke repo publik).
 _GENERIC_GATEWAYS = {
     "Cartridge Proxy": ("CARTRIDGE", "https://router.cartridge.my.id/v1"),
     "Kenari Proxy": ("KENARI", "https://kenari.id/v1/"),
     "GateAI Proxy": ("GATEAI", "https://gateai.id/v1/"),
     "Juan Proxy": ("JUAN", "https://router.juan.web.id/v1"),
     "SeekAI Proxy": ("SEEKAI", "https://seekai.cc/v1/"),
+    "9router Proxy": ("ROUTER9", ""),
 }
+
+
+def _resolve_base_url(prefix: str, default_url: str) -> str:
+    """Base URL efektif: <PREFIX>_BASE_URL dari secrets kalau ada, jika tidak
+    pakai default. Dipakai gateway yang URL-nya tidak boleh di-hardcode."""
+    try:
+        override = st.secrets.get(f"{prefix}_BASE_URL", "")
+    except Exception:
+        override = ""
+    return (override or default_url).rstrip("/")
 
 
 MODEL_METADATA = {
@@ -157,6 +171,18 @@ FALLBACK_MODELS = {
     "SeekAI Proxy": {
         "DeepSeek V4.1 Flash (Vision)": {
             "provider": "seekai",
+            "model": "deepseek-v4.1-flash",
+        },
+    },
+    "9router Proxy": {
+        # Id bervendor-prefix "cbai/" hanya ada di gateway 9router — sengaja
+        # TIDAK dicantumkan di provider lain supaya tidak bocor/menggantung.
+        "DeepSeek V4.1 Flash cbai (Vision)": {
+            "provider": "9router",
+            "model": "cbai/deepseek-v4.1-flash",
+        },
+        "DeepSeek V4.1 Flash (Vision)": {
+            "provider": "9router",
             "model": "deepseek-v4.1-flash",
         },
     },
@@ -357,15 +383,16 @@ def fetch_provider_models(
 
     elif provider_name in _GENERIC_GATEWAYS:
         # Gateway OpenAI-compatible generik (Cartridge / Kenari / GateAI /
-        # Juan / SeekAI). Pola sama dengan Kagiro: ambil /models lalu ping
-        # tiap model sebelum ditampilkan.
-        prefix, base_url = _GENERIC_GATEWAYS[provider_name]
+        # Juan / SeekAI / 9router). Pola sama dengan Kagiro: ambil /models lalu
+        # ping tiap model sebelum ditampilkan.
+        prefix, default_url = _GENERIC_GATEWAYS[provider_name]
+        base_url = _resolve_base_url(prefix, default_url)
         api_key = st.secrets.get(f"{prefix}_API_KEY", "")
 
-        if api_key:
+        if base_url and api_key:
             try:
                 response = requests.get(
-                    f"{base_url.rstrip('/')}/models",
+                    f"{base_url}/models",
                     headers={"Authorization": f"Bearer {api_key}"},
                     timeout=8,
                 )
