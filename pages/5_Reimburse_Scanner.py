@@ -167,6 +167,15 @@ if provider_name and selected_model != "Model tidak tersedia":
 # Uploader
 # ─────────────────────────────────────────────────────────────────────────
 st.subheader("Unggah Bukti")
+
+# Tombol reset supaya uploader dikosongkan penuh (ganti key -> widget dibuat ulang).
+if "reim_uploader_key" not in st.session_state:
+    st.session_state.reim_uploader_key = 0
+
+if st.button("Hapus Semua Bukti (Reset)"):
+    st.session_state.reim_uploader_key += 1
+    st.rerun()
+
 col_receipt, col_flazz = st.columns(2)
 
 with col_receipt:
@@ -174,16 +183,29 @@ with col_receipt:
         "Unggah foto struk (Bensin, Parkir, Teazzi) untuk satu bulan",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        key="receipt_uploader",
+        key=f"receipt_uploader_{st.session_state.reim_uploader_key}",
     )
+    # Indikator hijau begitu file dipilih — sama seperti QC Image Inserter.
+    if uploaded_files:
+        st.success(f"{len(uploaded_files)} struk terupload")
+    else:
+        st.caption("Belum ada struk yang dipilih")
 
 with col_flazz:
     flazz_files = st.file_uploader(
         "Unggah screenshot Flazz / e-money (opsional)",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        key="flazz_uploader",
+        key=f"flazz_uploader_{st.session_state.reim_uploader_key}",
     )
+    if flazz_files:
+        st.success(f"{len(flazz_files)} screenshot Flazz terupload")
+    else:
+        st.caption("Belum ada screenshot Flazz yang dipilih")
+
+_total_uploaded = len(uploaded_files or []) + len(flazz_files or [])
+if _total_uploaded:
+    st.success(f"Total {_total_uploaded} file terupload dan siap diproses")
 
 st.info(
     """
@@ -219,7 +241,8 @@ if st.button("🚀 Mulai Proses OCR, Sorting, Generate Excel & PDF", type="prima
 
         total_files = len(uploaded_files or [])
         if total_files:
-            progress_bar = st.progress(0)
+            ok_count = 0
+            progress_bar = st.progress(0, text=f"0 dari {total_files} struk diproses...")
             with st.spinner("Memproses foto struk dengan AI Vision..."):
                 for i, file in enumerate(uploaded_files):
                     img_bytes = file.getvalue()
@@ -234,10 +257,16 @@ if st.button("🚀 Mulai Proses OCR, Sorting, Generate Excel & PDF", type="prima
                         extracted_items.append(parsed)
                         sort_key = receipt_sort_key(parsed)
                         receipt_pdf_pairs.append((sort_key, file.name, img_bytes))
+                        ok_count += 1
                     except Exception as e:
                         failures.append((file.name, str(e)))
                         failed_pdf_images.append((file.name, img_bytes))
-                    progress_bar.progress((i + 1) / total_files)
+                    done = i + 1
+                    progress_bar.progress(
+                        done / total_files,
+                        text=f"{done} dari {total_files} struk diproses...",
+                    )
+            st.success(f"{total_files} struk terupload, {ok_count} berhasil di-OCR")
 
         # Screenshot Flazz — simpan per file agar dedup antar-screenshot akurat
         # (2 screenshot tumpang tindih menangkap riwayat yang sama).
@@ -245,8 +274,10 @@ if st.button("🚀 Mulai Proses OCR, Sorting, Generate Excel & PDF", type="prima
         flazz_items_by_file = []
         flazz_pdf_images = []
         if flazz_files:
+            total_flazz = len(flazz_files)
+            flazz_bar = st.progress(0, text=f"0 dari {total_flazz} screenshot Flazz diproses...")
             with st.spinner("Memproses screenshot Flazz/e-money..."):
-                for file in flazz_files:
+                for i, file in enumerate(flazz_files):
                     img_bytes = file.getvalue()
                     flazz_pdf_images.append((file.name, img_bytes))
                     try:
@@ -257,6 +288,12 @@ if st.button("🚀 Mulai Proses OCR, Sorting, Generate Excel & PDF", type="prima
                     except Exception as e:
                         failures.append((file.name, str(e)))
                         flazz_items_by_file.append([])
+                    done = i + 1
+                    flazz_bar.progress(
+                        done / total_flazz,
+                        text=f"{done} dari {total_flazz} screenshot Flazz diproses...",
+                    )
+            st.success(f"{total_flazz} screenshot Flazz terupload")
 
         if failures:
             st.warning(
