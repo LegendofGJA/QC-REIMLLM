@@ -439,7 +439,21 @@ if st.session_state.extracted_items:
         "tombol **Download** akan muncul."
     )
 
-    _month_tag = date.today().strftime("%Y%m")
+    _BULAN_ID = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+    ]
+    # Nama file unduhan memakai bulan & tahun nyata dari data (fallback: hari ini),
+    # contoh: "Reimburse Agustus 2026.xlsx" / "Invoice Agustus 2026.pdf".
+    _anchor = None
+    if len(df):
+        _valid = [d for d in df["date"].tolist() if d and str(d) != "NaT"]
+        if _valid:
+            _anchor = _valid[-1]
+    if _anchor is not None and hasattr(_anchor, "month"):
+        _period_label = f"{_BULAN_ID[_anchor.month - 1]} {_anchor.year}"
+    else:
+        _period_label = f"{_BULAN_ID[date.today().month - 1]} {date.today().year}"
     pcol1, pcol2 = st.columns(2)
 
     # ── Excel ────────────────────────────────────────────────────────────────
@@ -481,7 +495,7 @@ if st.session_state.extracted_items:
             st.download_button(
                 "📥 Download Excel Reimburse",
                 data=st.session_state.reim_excel_bytes,
-                file_name=f"FORM_REIMBURSE_{_month_tag}.xlsx",
+                file_name=f"Reimburse {_period_label}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="reim_dl_excel",
                 on_click="ignore",
@@ -528,7 +542,7 @@ if st.session_state.extracted_items:
             st.download_button(
                 "📥 Download PDF Bukti Gabungan (tanpa kompresi)",
                 data=st.session_state.reim_pdf_bytes,
-                file_name=f"Bukti_Gabungan_{_month_tag}.pdf",
+                file_name=f"Invoice {_period_label}.pdf",
                 mime="application/pdf",
                 key="reim_dl_pdf",
                 on_click="ignore",
