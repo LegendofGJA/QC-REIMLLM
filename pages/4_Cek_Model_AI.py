@@ -39,6 +39,26 @@ PRESET_PROVIDERS = {
         "url": "https://bandelbanget.xyz/v1",
         "secret": "BANDEL_API_KEY",
     },
+    "Cartridge": {
+        "url": "https://router.cartridge.my.id/v1",
+        "secret": "CARTRIDGE_API_KEY",
+    },
+    "Kenari": {
+        "url": "https://kenari.id/v1/",
+        "secret": "KENARI_API_KEY",
+    },
+    "GateAI": {
+        "url": "https://gateai.id/v1/",
+        "secret": "GATEAI_API_KEY",
+    },
+    "Juan": {
+        "url": "https://router.juan.web.id/v1",
+        "secret": "JUAN_API_KEY",
+    },
+    "SeekAI": {
+        "url": "https://seekai.cc/v1/",
+        "secret": "SEEKAI_API_KEY",
+    },
     "DeepSeek Direct": {
         "url": "https://api.deepseek.com/v1",
         "secret": "DEEPSEEK_API_KEY",
