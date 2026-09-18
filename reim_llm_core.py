@@ -64,16 +64,24 @@ for _name, _prefix, _default_url in _PROVIDER_DEFS:
         }
 del _name, _prefix, _default_url, _key
 
-# Fallback kalau endpoint /models tidak tersedia / kosong.
+# Fallback HANYA dipakai kalau endpoint /models tidak tersedia / kosong.
+# Daftar ini sengaja generik (model vision lintas-vendor) dan TIDAK memuat id
+# spesifik gateway (mis. "cbai/...") supaya id milik 9router tidak bocor ke
+# provider lain saat /models gagal.
 FALLBACK_MODELS = [
-    "deepseek-v4.1-flash",
-    "cbai/deepseek-v4.1-flash",
     "qwen-vl-max",
     "qwen2.5-vl-72b-instruct",
     "qwen-vl-max-latest",
     "gpt-4o",
     "gpt-4o-mini",
+    "gemini-2.0-flash",
 ]
+
+# Fallback tambahan KHUSUS per provider (dipakai kalau /models gagal). Dipakai
+# mis. oleh 9router yang punya id bervendor-prefix seperti "cbai/deepseek-v4.1-flash".
+_PROVIDER_EXTRA_FALLBACK = {
+    "9router": ["cbai/deepseek-v4.1-flash", "deepseek-v4.1-flash"],
+}
 
 
 def _auth_headers(cfg: dict) -> dict:
@@ -85,43 +93,18 @@ def _auth_headers(cfg: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────
 
 
-# Pola id yang lazim untuk model VISION (bisa menerima input gambar).
-# Jika endpoint /models tidak memberi flag "vision"/"image", kita filter
-# berdasarkan nama id supaya dropdown hanya menampilkan model vision.
-_VISION_HINTS = (
-    "vl",
-    "vision",
-    # DeepSeek V4.1 Flash mendukung input gambar (vision) di gateway yang
-    # menyediakannya, jadi ikut ditampilkan di dropdown OCR — termasuk varian
-    # bervendor-prefix seperti "cbai/deepseek-v4.1-flash".
-    "deepseek-v4.1-flash",
-    "deepseek-v4.1",
-    # Catatan: TIDAK memakai hint generik "flash"/"deepseek", karena banyak
-    # model non-vision (mis. cbai/deepseek-v4-flash) ikut lolos padahal
-    # tidak bisa OCR gambar. Model vision di bawah ini dipilih lewat pola
-    # id yang spesifik.
-    "gpt-4o",  # gpt-4o sebenarnya multimodal, pertahankan sebagai vision hint
-    "gpt-4.1",
-    "gemini",
-    "claude",
-    "minimax-vl",
-    "internvl",
-    "glm-4v",
-    "glm-4.5v",
-    "qwen-vl",
-    "qwen2.5-vl",
-    "kimi-k",
-    "kimi-latest",
-)
-
-
-def _is_vision(model_id: str) -> bool:
-    m = model_id.lower()
-    return any(h in m for h in _VISION_HINTS)
+# Catatan desain: TIDAK ada daftar "hint vision" yang dipakai untuk MEMPERTAHANKAN
+# model. Filter hanya bersifat membuang (lihat _NON_VISION_HINTS). Ini supaya
+# daftar model yang tampil benar-benar model asli dari server, bukan hasil tebakan
+# dari pola nama — akar masalah "scan tidak menampilkan model sebenarnya".
 
 
 def fetch_models(provider_name: str) -> list:
-    """Ambil daftar model id dari /models. Gagal -> fallback default."""
+    """Ambil daftar model id ASLI dari /models (tanpa filter).
+
+    Return (ids, from_server). `from_server=False` menandakan endpoint gagal /
+    kosong sehingga `ids` berisi fallback default.
+    """
     cfg = PROVIDERS[provider_name]
     url = f"{cfg['base_url']}/models"
     try:
@@ -129,29 +112,139 @@ def fetch_models(provider_name: str) -> list:
         if r.status_code == 200:
             data = r.json()
             models = data.get("data", data)
-            ids = [
-                (m.get("id") if isinstance(m, dict) else m)
-                for m in (models if isinstance(models, list) else [])
-            ]
-            ids = [i for i in ids if isinstance(i, str)]
+            ids = []
+            for m in (models if isinstance(models, list) else []):
+                if isinstance(m, dict):
+                    mid = m.get("id")
+                    if isinstance(mid, str):
+                        ids.append(mid)
+                elif isinstance(m, str):
+                    ids.append(m)
             if ids:
-                return ids
+                return ids, True
     except Exception:
         pass
-    return list(FALLBACK_MODELS)
+    fallback = list(FALLBACK_MODELS) + list(_PROVIDER_EXTRA_FALLBACK.get(provider_name, []))
+    return fallback, False
+
+
+def _model_declares_non_vision(model_obj) -> bool:
+    """True bila metadata model secara EXPLISIT menyatakan non-vision.
+
+    Beberapa gateway mengirim field `modality`/`input_modalities`/`vision`.
+    Kalau endpoint memberi info ini, kita pakai sebagai sinyal utama — bukan
+    menebak dari nama. Endpoint yang tidak memberi info -> None (tidak terpakai).
+    """
+    if not isinstance(model_obj, dict):
+        return False
+    # `vision: false` eksplisit
+    for k in ("vision", "supports_vision", "multimodal"):
+        if k in model_obj and model_obj[k] is False:
+            return True
+    # input_modalities / modality tanpa "image"
+    for k in ("input_modalities", "modalities", "modality"):
+        v = model_obj.get(k)
+        if v is None:
+            continue
+        vals = v if isinstance(v, (list, tuple)) else [v]
+        s = " ".join(str(x).lower() for x in vals)
+        if s and "image" not in s and "vision" not in s:
+            return True
+    return False
+
+
+def fetch_models_raw(provider_name: str) -> dict:
+    """Ambil daftar model + metadata mentah dari /models.
+
+    Return {"ids": [...], "non_vision": set(ids), "from_server": bool}.
+    `non_vision` berisi id yang ENDPOINT-nya bilang non-vision (kalau info ada).
+    """
+    cfg = PROVIDERS[provider_name]
+    url = f"{cfg['base_url']}/models"
+    ids, non_vision, from_server = [], set(), False
+    try:
+        r = requests.get(url, headers=_auth_headers(cfg), timeout=12)
+        if r.status_code == 200:
+            data = r.json()
+            models = data.get("data", data)
+            for m in (models if isinstance(models, list) else []):
+                if isinstance(m, dict):
+                    mid = m.get("id")
+                    if isinstance(mid, str):
+                        ids.append(mid)
+                        if _model_declares_non_vision(m):
+                            non_vision.add(mid)
+                elif isinstance(m, str):
+                    ids.append(m)
+            if ids:
+                from_server = True
+    except Exception:
+        pass
+    if not from_server:
+        ids = list(FALLBACK_MODELS) + list(_PROVIDER_EXTRA_FALLBACK.get(provider_name, []))
+    return {"ids": ids, "non_vision": non_vision, "from_server": from_server}
 
 
 def fetch_vision_models(provider_name: str) -> list:
-    """Daftar model VISION saja (tanpa ping) dari /models. Gagal -> fallback
-    default yang sudah difilter vision; kalau kosong sama sekali, kembalikan
-    fallback mentah supaya dropdown tidak kosong."""
-    all_ids = fetch_models(provider_name)
-    vision = [m for m in all_ids if _is_vision(m)]
+    """Daftar model VISION dari /models provider ini.
+
+    Prinsip: TAMPILKAN MODEL ASLI DARI SERVER. Penyaringan vision hanya membuang
+    model yang endpoint-nya (atau polanya) secara jelas bukan vision — sisanya
+    dibiarkan muncul. Kalau hasil filter kosong, kembalikan daftar aslinya
+    supaya dropdown tidak pernah kosong / tidak kehilangan model nyata.
+    """
+    info = fetch_models_raw(provider_name)
+    ids = info["ids"]
+    non_vision = info["non_vision"]  # dari metadata endpoint (paling akurat)
+
+    vision = []
+    for mid in ids:
+        if mid in non_vision:
+            continue
+        if _is_definitely_non_vision(mid):
+            continue
+        vision.append(mid)
+
     if vision:
         return vision
-    # Tidak ada yang terdeteksi vision -> fallback ke daftar default (vision).
-    fallback_vision = [m for m in FALLBACK_MODELS if _is_vision(m)]
-    return fallback_vision or all_ids
+    # Filter terlalu agresif -> jangan sembunyikan model nyata.
+    return ids
+
+
+def fetch_all_models(provider_name: str) -> list:
+    """Seluruh model asli dari server (tanpa filter vision).
+
+    Dipakai untuk dropdown "Mode: semua model" di halaman Reimburse, supaya
+    model yang tidak terdeteksi oleh pola nama tetap bisa dipilih manual.
+    """
+    return fetch_models_raw(provider_name)["ids"]
+
+
+# Pola id yang PASTI bukan vision (dipakai untuk membuang, bukan untuk
+# mempertahankan). Sengaja konservatif: kalau ragu, model tetap ditampilkan.
+_NON_VISION_HINTS = (
+    "embedding",
+    "embed",
+    "rerank",
+    "reranker",
+    "tts",
+    "whisper",
+    "audio",
+    "speech",
+    "moderation",
+    "dall-e",
+    "image-generation",
+    "stable-diffusion",
+    "flux",
+    "sdxl",
+    "bge-",
+    "text-embedding",
+)
+
+
+def _is_definitely_non_vision(model_id: str) -> bool:
+    m = model_id.lower()
+    return any(h in m for h in _NON_VISION_HINTS)
 
 
 # ─────────────────────────────────────────────────────────────────────────
