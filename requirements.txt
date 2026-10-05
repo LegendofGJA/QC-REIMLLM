@@ -1,10 +1,40 @@
-# Gabungan requirement QCLLM3 + LLMREIM.
-# Versi diambil dari yang lebih tinggi antar kedua proyek.
-streamlit>=1.38
-openpyxl>=3.1
-pandas>=2.0
-supabase>=2.6
-Pillow>=10.0
-requests>=2.31
-img2pdf>=0.5
-python-dateutil>=2.8
+# ============================================================================
+# Requirements — Teazzi Audit & QC Toolkit (gabungan QCLLM3 + LLMREIM)
+#
+# PENTING: pakai pin "~=" (compatible-release), BUKAN ">=" . Alasannya:
+#   - Setiap kali app bangun dari sleep, Streamlit Cloud melakukan COLD BUILD
+#     -> pip resolve + install ulang dari nol. Kalau pin-nya terbuka (">="),
+#     pip harus mengecek PyPI dan bisa memasang versi terbaru yang belum tentu
+#     cocok -> build lambat / gagal / app nggak pernah lolos health check
+#     (gejala: nyangkut di "Spinning up manager process...").
+#   - Dengan "~=", versi mayor.minor dikunci -> build cepat, deterministik,
+#     dan tidak akan ketarik versi baru yang merusak.
+#
+# Kalau mau meng-upgrade, ganti angkanya secara sadar lalu tes ulang.
+# ============================================================================
+
+# UI framework. Butuh >=1.38 untuk page_icon=":material/..." (app.py memakainya).
+streamlit~=1.39.0
+
+# Excel read/write (audit template, reimburse form, QC image inserter).
+openpyxl~=3.1.5
+
+# DataFrame untuk tabel hasil & scoring.
+pandas~=2.2.3
+
+# Supabase REST client (Detail Audit, Admin, Audit Log, Traffic Log).
+supabase~=2.9.0
+
+# Pemrosesan gambar: EXIF GPS, kompresi foto QC, konversi ke PDF.
+# PENTING: Streamlit 1.39 mensyaratkan pillow<11 -> JANGAN pakai Pillow 11.x
+# (kalau dipaksa, pip ResolutionImpossible -> build Streamlit Cloud nyangkut).
+Pillow~=10.4.0
+
+# HTTP client untuk semua provider AI + Nominatim reverse-geocode.
+requests~=2.32.3
+
+# Gabung banyak foto jadi satu PDF tanpa kompresi ulang.
+img2pdf~=0.6.0
+
+# Parsing tanggal struk yang toleran format (Indonesia + ISO).
+python-dateutil~=2.9.0.post0
