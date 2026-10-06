@@ -243,7 +243,7 @@ st.info(
     """
 **Aturan ekstraksi & format output:**
 1. **Sorting kronologis:** hasil Excel diurutkan dari tanggal & jam transaksi paling awal ke akhir (bukan urutan upload).
-2. **Bensin:** Pertalite → description cukup nama BBM. Pertamax/jenis lain → description berisi jenis BBM + jumlah liter, nominal tetap total akhir struk.
+2. **Bensin:** semua jenis BBM (termasuk Pertalite) → description berisi jenis BBM + jumlah liter, nominal tetap total akhir struk.
 3. **Drink (Teazzi):** description berisi jenis minuman & nama outlet, nominal total akhir.
 4. **Parkir:** description berisi nama tempat (atau `-` jika tidak ada), nominal total.
 5. **Dedup Flazz:** baris "Parking" di screenshot Flazz yang tanggal & nominalnya sama persis dengan struk parkir fisik di-skip (tidak dobel). "Top Up" selalu di-skip.
