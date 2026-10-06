@@ -79,8 +79,6 @@ def build_description(item: dict) -> str:
         liters = item.get("liters")
         if not fuel:
             return "-"
-        if "pertalite" in fuel.lower():
-            return fuel
         if liters:
             try:
                 liters_fmt = f"{float(liters):g}"
