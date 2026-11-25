@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 
 import streamlit as st
 
@@ -8,6 +9,10 @@ from llm_core import (
     FALLBACK_MODELS,
     scan_provider_models,
     ping_provider_model,
+    get_provider_cache,
+    save_provider_scan,
+    save_provider_test,
+    clear_provider_cache,
     call_llm,
     get_byok_config,
     save_byok_config,
@@ -32,10 +37,6 @@ DEFAULT_STATE = {
     "llm_run_id": 0,
     "llm_last_processed_text": None,
     "llm_last_processed_model": None,
-    "llm_scan_status": {},
-    "llm_scanned_models": {},
-    "llm_tested_models": {},
-    "llm_test_results": {},
     "llm_last_unapplied": [],
     "llm_findings_text": "",
 }
@@ -46,6 +47,11 @@ for state_key, default_value in DEFAULT_STATE.items():
 
 
 # ── HELPERS ───────────────────────────────────────────────
+def _now_wib_str() -> str:
+    """Jam sekarang format WIB (UTC+7) untuk penanda waktu cache bersama."""
+    return datetime.now(timezone(timedelta(hours=7))).strftime("%H:%M WIB")
+
+
 def normalise_unmatched(value):
     """Membuat hasil unmatched aman ditampilkan sebagai teks."""
     if value is None:
@@ -164,18 +170,17 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
 
     is_byok = selected_provider == "BYOK (Custom)"
 
-    # Sumber daftar model dropdown:
+    # Sumber daftar model dropdown (dibaca dari cache bersama lintas tab & device):
     # 1) Jika sudah klik Test  -> hanya model yang hidup (lolos ping)
     # 2) Jika sudah klik Scan  -> semua model hasil Auto-Scan (0 token)
     # 3) Belum Scan            -> daftar default FALLBACK_MODELS (0 token)
-    tested_models_map = st.session_state["llm_tested_models"]
-    scanned_models_map = st.session_state["llm_scanned_models"]
+    provider_cache = get_provider_cache(selected_provider)
 
-    if selected_provider in tested_models_map:
-        available_models = tested_models_map[selected_provider]
+    if provider_cache["has_tested"]:
+        available_models = provider_cache["tested_models"]
         model_source = "tested"
-    elif selected_provider in scanned_models_map:
-        available_models = scanned_models_map[selected_provider]
+    elif provider_cache["has_scanned"]:
+        available_models = provider_cache["scanned_models"]
         model_source = "scanned"
     else:
         available_models = FALLBACK_MODELS.get(selected_provider, {})
@@ -220,18 +225,16 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
         )
         if st.button("💾 Simpan BYOK (share ke device lain)", use_container_width=True):
             save_byok_config(byok_url, byok_key)
-            st.session_state["llm_scanned_models"].pop(selected_provider, None)
-            st.session_state["llm_tested_models"].pop(selected_provider, None)
-            st.session_state["llm_test_results"].pop(selected_provider, None)
-            st.session_state["llm_scan_status"].pop(selected_provider, None)
+            clear_provider_cache(selected_provider)
             st.session_state.pop(model_widget_key, None)
             st.success("BYOK tersimpan.")
             st.rerun()
 
     # ── 2 BUTTON DI BAWAH: SCAN (0 TOKEN) & TEST (PING HIDUP) ──
     models_to_test = (
-        scanned_models_map.get(selected_provider)
-        or FALLBACK_MODELS.get(selected_provider, {})
+        provider_cache["scanned_models"]
+        if provider_cache["has_scanned"]
+        else FALLBACK_MODELS.get(selected_provider, {})
     )
 
     col_btn_scan, col_btn_test = st.columns(2)
@@ -248,7 +251,7 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
             disabled=not bool(models_to_test),
             help=(
                 "Tes kesehatan (ping) semua model untuk menyaring "
-                "hanya model yang hidup di dropdown."
+                "hanya model yang hidup di dropdown (tersimpan lintas tab & device)."
             ),
         )
 
@@ -261,26 +264,12 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
             ):
                 scanned = scan_provider_models(selected_provider)
 
-            scanned_map = dict(st.session_state["llm_scanned_models"])
-            scanned_map[selected_provider] = scanned
-            st.session_state["llm_scanned_models"] = scanned_map
-
-            # Reset filter Test sebelumnya agar dropdown menampilkan semua model hasil Scan
-            tested_map = dict(st.session_state["llm_tested_models"])
-            tested_map.pop(selected_provider, None)
-            st.session_state["llm_tested_models"] = tested_map
-
-            results_map = dict(st.session_state["llm_test_results"])
-            results_map.pop(selected_provider, None)
-            st.session_state["llm_test_results"] = results_map
-
-            scan_status = dict(st.session_state["llm_scan_status"])
-            scan_status[selected_provider] = (
+            status_msg = (
                 f"🔍 Berhasil menemukan **{len(scanned)} model** dari "
-                f"{selected_provider} (tanpa ping / 0 token). "
+                f"{selected_provider} (0 token · {_now_wib_str()}). "
                 "Klik **Test** jika ingin menyaring model yang hidup saja."
             )
-            st.session_state["llm_scan_status"] = scan_status
+            save_provider_scan(selected_provider, scanned, status_msg)
 
             st.session_state.pop(model_widget_key, None)
             st.rerun()
@@ -330,33 +319,25 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
                 "model": r["model"],
             }
 
-        results_map = dict(st.session_state["llm_test_results"])
-        results_map[selected_provider] = results
-        st.session_state["llm_test_results"] = results_map
-
-        tested_map = dict(st.session_state["llm_tested_models"])
-        tested_map[selected_provider] = alive_models
-        st.session_state["llm_tested_models"] = tested_map
-
-        scan_status = dict(st.session_state["llm_scan_status"])
         if alive_models:
-            scan_status[selected_provider] = (
+            status_msg = (
                 f"✅ {len(alive_models)} dari {len(results)} model hidup "
-                f"di {selected_provider}. Dropdown kini hanya menampilkan "
-                "model yang aktif."
+                f"di {selected_provider} (tersimpan lintas tab/device · {_now_wib_str()}). "
+                "Dropdown hanya menampilkan model yang aktif."
             )
         else:
-            scan_status[selected_provider] = (
+            status_msg = (
                 f"❌ Tidak ada model yang merespons hidup di {selected_provider} "
-                f"(0 dari {len(results)}). Klik **Scan** untuk melihat semua model kembali."
+                f"(0 dari {len(results)} · {_now_wib_str()}). "
+                "Klik **Scan** untuk melihat semua model kembali."
             )
-        st.session_state["llm_scan_status"] = scan_status
+        save_provider_test(selected_provider, alive_models, results, status_msg)
 
         st.session_state.pop(model_widget_key, None)
         st.rerun()
 
     # ── STATUS SCAN & HASIL TEST (SEPERTI CEK MODEL AI) ──
-    scan_message = st.session_state["llm_scan_status"].get(selected_provider)
+    scan_message = provider_cache["scan_status"]
     if scan_message:
         st.caption(scan_message)
 
@@ -373,7 +354,7 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
             "Klik **Scan** untuk memuat semua model dari server."
         )
 
-    test_results = st.session_state["llm_test_results"].get(selected_provider)
+    test_results = provider_cache["test_results"]
     if test_results:
         alive = [r for r in test_results if r["alive"]]
         dead = [r for r in test_results if not r["alive"]]
@@ -399,6 +380,7 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
                 st.markdown("**❌ Model Error / Tidak Merespons**")
                 for r in dead:
                     st.markdown(f"- **`{r['model']}`** — ⚠️ {r['detail']}")
+
 
     findings_text = st.text_area(
         "Paste temuan (bebas, boleh tidak rapi)",
