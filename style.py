@@ -236,6 +236,38 @@ section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[aria-current="pa
     color: var(--magenta) !important;
 }
 
+/* ── TABS (PANDUAN & INTERAKTIF) ── */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 8px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.28) !important;
+    padding-bottom: 6px;
+}
+[data-testid="stTabs"] button[role="tab"] {
+    background: rgba(11, 14, 34, 0.90) !important;
+    color: var(--text-sec) !important;
+    border: 1px solid rgba(0, 240, 255, 0.28) !important;
+    border-radius: 8px !important;
+    padding: 8px 14px !important;
+    font-family: 'Chakra Petch', sans-serif !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+[data-testid="stTabs"] button[role="tab"]:hover {
+    color: #ffffff !important;
+    border-color: var(--magenta) !important;
+    box-shadow: 0 0 14px rgba(255, 0, 127, 0.35) !important;
+}
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, rgba(255, 0, 127, 0.35), rgba(0, 240, 255, 0.25)) !important;
+    border-color: var(--cyan) !important;
+    box-shadow: 0 0 18px rgba(0, 240, 255, 0.42), 0 0 12px rgba(255, 0, 127, 0.32) !important;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+}
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    background: linear-gradient(90deg, var(--cyan), var(--magenta)) !important;
+}
+
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, rgba(12, 16, 38, 0.94), rgba(7, 9, 22, 0.98)) !important;
     border: 1px solid rgba(0, 240, 255, 0.35) !important;
