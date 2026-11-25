@@ -14,7 +14,7 @@ from datetime import date
 
 import streamlit as st
 
-from style import inject_css, inject_footer
+from style import inject_css, inject_sidebar_brand, inject_footer
 from reim_excel_core import TEMPLATE_PATH, fill_excel_template
 from reim_extract_core import (
     EXTRACTION_PROMPT,
@@ -30,13 +30,17 @@ from reim_pdf_core import merge_images_to_pdf
 
 st.set_page_config(page_title="Reimburse Scanner", page_icon="🧾", layout="wide")
 inject_css()
+inject_sidebar_brand()
 
 st.markdown(
     """
-    <h2>🧾 Aplikasi Scan &amp; Ekstraksi Reimburse Struk</h2>
-    <p>Upload foto struk (bensin, parkir, Teazzi) dan screenshot Flazz/e-money.
-    Sistem mengekstrak data, mengurutkan kronologis, mengisi template Excel, dan
-    menggabungkan bukti asli ke satu PDF tanpa kompresi.</p>
+    <div class="page-head">
+        <div class="page-head-icon">🧾</div>
+        <h2>Reimburse Scanner</h2>
+        <p>Upload foto struk (bensin, parkir, Teazzi) dan screenshot Flazz/e-money.
+        Sistem mengekstrak data, mengurutkan kronologis, mengisi template Excel, dan
+        menggabungkan bukti asli ke satu PDF tanpa kompresi.</p>
+    </div>
     """,
     unsafe_allow_html=True,
 )
