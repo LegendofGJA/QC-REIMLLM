@@ -222,14 +222,15 @@ else:
                 help="Pilih sheet tempat menulis Store Name, Tanggal, Nama Pengguna, dan PIC.",
             )
             st.markdown(
-                f"""<div style="background:rgba(229,50,45,0.06); border:1px solid rgba(229,50,45,0.15);
-                     border-radius:10px; padding:12px 16px; margin-top:8px;">
-                    <p style="color:#fca5a5; font-size:0.82rem; margin:0; line-height:1.6;">
-                        Cell <b>B6</b> = Nama Toko (label A6) &nbsp;|&nbsp;
-                        Cell <b>B7</b> = Tanggal QC (label A7) &nbsp;|&nbsp;
-                        Cell <b>E6</b> = Nama Pengguna (label D6) &nbsp;|&nbsp;
-                        Cell <b>E7</b> = PIC (label D7)<br>
-                        Target: <b>{cell_target_sheet}</b>
+                f"""<div style="background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.45);
+                     border-left:4px solid #ff007f; border-radius:10px; padding:12px 16px; margin-top:8px;
+                     box-shadow:0 0 18px rgba(0,240,255,0.16);">
+                    <p style="color:#a3f7ff; font-size:0.82rem; margin:0; line-height:1.6;">
+                        Cell <b style="color:#00f0ff;">B6</b> = Nama Toko (label A6) &nbsp;|&nbsp;
+                        Cell <b style="color:#00f0ff;">B7</b> = Tanggal QC (label A7) &nbsp;|&nbsp;
+                        Cell <b style="color:#00f0ff;">E6</b> = Nama Pengguna (label D6) &nbsp;|&nbsp;
+                        Cell <b style="color:#00f0ff;">E7</b> = PIC (label D7)<br>
+                        Target: <b style="color:#ff4da6;">{cell_target_sheet}</b>
                     </p>
                 </div>""",
                 unsafe_allow_html=True,
