@@ -1,12 +1,12 @@
 <div align="center">
 
 <!-- CYBERPUNK NEON HERO BANNER -->
-<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:05050d,35:00f0ff,70:ff007f,100:05050d&height=210&section=header&text=TEAZZI%20AUDIT%20%26%20QC%20TOOLKIT&fontSize=38&fontColor=ffffff&fontAlignY=38&desc=CYBERPUNK%20NEON%20EDITION%20%E2%80%A2%20AUDIT%20%E2%80%A2%20QC%20%E2%80%A2%20REIMBURSE%20OCR&descAlignY=62&descSize=14&animation=twinkling" alt="Teazzi Audit & QC Toolkit — Cyberpunk Neon Edition" />
+<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:05050d,35:00f0ff,70:ff007f,100:05050d&height=210&section=header&text=TEAZZI%20AUDIT%20%2F%2F%20QC%20TOOLKIT&fontSize=38&fontColor=ffffff&fontAlignY=38&desc=CYBERPUNK%20NEON%20EDITION%20%E2%80%A2%20AUDIT%20%E2%80%A2%20QC%20%E2%80%A2%20REIMBURSE%20OCR&descAlignY=62&descSize=14&animation=twinkling" alt="Teazzi Audit & QC Toolkit — Cyberpunk Neon Edition" />
 
 <br/>
 
 <a href="#-dua-modul-satu-aplikasi">
-  <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=800&size=18&duration=3000&pause=1000&color=00F0FF&center=true&vCenter=true&width=760&lines=MULTI-LLM+FINDING+MAPPING+%E2%80%A2+ZERO-TOKEN+AUTO-SCAN;130-ITEM+WEIGHTED+AUDIT+CHECKLIST+%E2%80%A2+CLOUD+DRAFT;UNLIMITED+BULK+QC+PHOTOS+%E2%80%A2+OCR+REIMBURSE+EXCEL+%26+PDF" alt="Cyberpunk Neon Subtitle" />
+  <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=800&size=18&duration=3000&pause=1000&color=00F0FF&center=true&vCenter=true&width=760&lines=MULTI-LLM+FINDING+MAPPING+%E2%80%A2+ZERO-TOKEN+AUTO-SCAN;130-ITEM+WEIGHTED+AUDIT+CHECKLIST+%E2%80%A2+CLOUD+DRAFT;UNLIMITED+BULK+QC+PHOTOS+%E2%80%A2+OCR+REIMBURSE+EXCEL+%2B+PDF" alt="Cyberpunk Neon Subtitle" />
 </a>
 
 <br/>
@@ -180,7 +180,7 @@ streamlit run app.py
 
 <div align="center">
 
-<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:05050d,30:ff007f,70:00f0ff,100:05050d&height=110&section=footer&text=BUILT%20WITH%20AI%20%26%20GJORMA%20%E2%80%A2%20CYBERPUNK%20NEON%20EDITION&fontSize=15&fontColor=ffffff&fontAlignY=68" alt="Cyberpunk Neon Footer" />
+<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:05050d,30:ff007f,70:00f0ff,100:05050d&height=110&section=footer&text=BUILT%20WITH%20AI%20%2B%20GJORMA%20%E2%80%A2%20CYBERPUNK%20NEON%20EDITION&fontSize=15&fontColor=ffffff&fontAlignY=68" alt="Cyberpunk Neon Footer" />
 
 </div>
 
