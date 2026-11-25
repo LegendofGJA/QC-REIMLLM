@@ -25,31 +25,41 @@ st.markdown(
     """
     <style>
     .cat-banner {
-        background: linear-gradient(135deg, var(--accent), #c0242a);
-        color: #fff;
-        font-weight: 700;
-        font-size: 0.95rem;
-        padding: 7px 14px;
+        background: linear-gradient(90deg, rgba(255, 0, 127, 0.85) 0%, rgba(120, 0, 255, 0.72) 52%, rgba(0, 240, 255, 0.78) 100%);
+        color: #ffffff;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 800;
+        font-size: 0.92rem;
+        padding: 9px 16px;
+        border: 1px solid rgba(0, 240, 255, 0.65);
         border-radius: 8px;
-        margin: 16px 0 6px 0;
-        letter-spacing: .03em;
+        margin: 18px 0 8px 0;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+        box-shadow: 0 0 18px rgba(255, 0, 127, 0.35), 0 0 14px rgba(0, 240, 255, 0.28);
     }
     .subcat-label {
+        font-family: 'Chakra Petch', sans-serif;
         font-weight: 700;
-        text-decoration: underline;
-        margin: 8px 0 4px 4px;
-        color: var(--accent);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin: 10px 0 6px 4px;
+        color: #00f0ff;
+        text-shadow: 0 0 10px rgba(0, 240, 255, 0.55);
+        border-left: 3px solid #ff007f;
+        padding-left: 10px;
     }
     div.st-key-floating_actions {
         position: fixed;
         left: 14px;
         bottom: 14px;
         z-index: 9999;
-        background: var(--surface);
+        background: rgba(7, 9, 24, 0.94);
         padding: 6px;
         border-radius: 999px;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.35);
-        border: 1px solid var(--border);
+        box-shadow: 0 0 22px rgba(0, 240, 255, 0.42), 0 0 16px rgba(255, 0, 127, 0.32);
+        border: 1px solid rgba(0, 240, 255, 0.7);
         width: auto;
         display: inline-block;
     }
@@ -117,25 +127,27 @@ def inject_scroll_buttons():
                         position: fixed !important;
                         right: 18px;
                         z-index: 999999;
-                        width: 42px;
-                        height: 42px;
+                        width: 44px;
+                        height: 44px;
                         border-radius: 50%;
-                        background: var(--surface, #1c1c1c);
-                        color: var(--accent, #e63946);
-                        border: 1px solid var(--border, #333);
-                        box-shadow: 0 3px 14px rgba(0,0,0,0.35);
+                        background: rgba(7, 9, 24, 0.94);
+                        color: #00f0ff;
+                        border: 1px solid rgba(0, 240, 255, 0.72);
+                        box-shadow: 0 0 18px rgba(0, 240, 255, 0.45), 0 0 10px rgba(255, 0, 127, 0.25);
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        font-size: 1.15rem;
+                        font-size: 1.1rem;
                         line-height: 1;
                         cursor: pointer;
-                        transition: transform .12s ease, background .12s ease;
+                        transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
                     }
                     #qc-scroll-nav-wrapper .qc-scroll-btn:hover {
-                        background: var(--accent, #e63946);
-                        color: #fff;
-                        transform: translateY(-1px);
+                        background: linear-gradient(135deg, #00f0ff, #ff007f);
+                        color: #ffffff;
+                        border-color: #ff007f;
+                        box-shadow: 0 0 24px rgba(255, 0, 127, 0.75), 0 0 18px rgba(0, 240, 255, 0.6);
+                        transform: translateY(-2px);
                     }
                     #qc-scroll-top { top: 58px; }
                     #qc-scroll-bottom { bottom: 56px; }
