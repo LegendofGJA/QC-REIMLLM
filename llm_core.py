@@ -56,122 +56,89 @@ def _resolve_base_url(prefix: str, default_url: str) -> str:
     return (override or default_url).rstrip("/")
 
 
-MODEL_METADATA = {
-    # Bandelbanget Proxy
-    "mimo-v2.5-pro": "Xiaomi MiMo V2.5 Pro (B-S) [1.4x]",
-    "deepseek-v4-pro": "DeepSeek V4 Pro (B-S) [1.15x]",
-    "deepseek-v4-pro-0813": "DeepSeek V4 Pro 0813 (B-S) [1.8x]",
-    "kimi-k3": "Kimi K3 (B-S) [1x]",
-    "deepseek-v4-mod": "DeepSeek V4 Mod (B-A) [1.25x]",
-    "glm-5.3": "GLM 5.3 (B-A) [2x]",
-    "glm-5.2": "GLM 5.2 (B-A) [1.25x]",
-    "kimi-k2.7-code-highspeed": "Kimi K2.7 Code Highspeed (B-A) [1.5x]",
-    "glm-5.1": "GLM 5.1 (B-B) [1x]",
-    "hy3": "Hunyuan 3 / HY3 (B-B) [1x]",
-    "deepseek-v4-flash": "DeepSeek V4 Flash (B-B) [2x]",
-    "deepseek-v4-flash-0731": "DeepSeek V4 Flash 0731 (B-B) [2x]",
-
-    # Kagiro Proxy
-    "kagiro/claude-sonnet-4-6": "Claude Sonnet 4.6 (K-S) [4x]",
-    "kagiro/claude-sonnet-5": "Claude Sonnet 5 (K-S) [5x]",
-    "kagiro/deepseek-v4-pro": "DeepSeek V4 Pro (K-S) [2x]",
-    "kagiro/claude-haiku4-5": "Claude Haiku 4.5 (K-S) [2x]",
-    "kagiro/claude-opus-5": "Claude Opus 5 (K-A) [8x]",
-    "kagiro/claude-opus-4-8": "Claude Opus 4.8 (K-A) [5x]",
-    "kagiro/mimo-v2-5": "Xiaomi MiMo V2.5 (K-A) [1x]",
-    "kagiro/glm5-3": "GLM 5.3 (K-A) [6x]",
-    "kagiro/gemini-3-7-flash": "Gemini 3.7 Flash (K-B) [3x]",
-    "kagiro/deepseek-v4-flash": "DeepSeek V4 Flash (K-B) [1.7x]",
-
-    # DeepSeek V4.1 Flash (vision) — tersedia di gateway yang mendukung gambar
-    "deepseek-v4.1-flash": "DeepSeek V4.1 Flash (Vision)",
-    "cbai/deepseek-v4.1-flash": "DeepSeek V4.1 Flash (cbai) (Vision)",
-}
-
-
 FALLBACK_MODELS = {
     "Kagiro Proxy": {
-        "Claude Sonnet 4.6 (K-S) [4x]": {
+        "kagiro/claude-sonnet-4-6": {
             "provider": "kagiro",
             "model": "kagiro/claude-sonnet-4-6",
         },
-        "Claude Sonnet 5 (K-S) [5x]": {
+        "kagiro/claude-sonnet-5": {
             "provider": "kagiro",
             "model": "kagiro/claude-sonnet-5",
         },
-        "DeepSeek V4 Pro (K-S) [2x]": {
+        "kagiro/deepseek-v4-pro": {
             "provider": "kagiro",
             "model": "kagiro/deepseek-v4-pro",
         },
-        "Claude Haiku 4.5 (K-S) [2x]": {
+        "kagiro/claude-haiku4-5": {
             "provider": "kagiro",
             "model": "kagiro/claude-haiku4-5",
         },
     },
     "Bandelbanget Proxy": {
-        "Xiaomi MiMo V2.5 Pro (B-S) [1.4x]": {
+        "mimo-v2.5-pro": {
             "provider": "bandelbanget",
             "model": "mimo-v2.5-pro",
         },
-        "DeepSeek V4 Pro (B-S) [1.15x]": {
+        "deepseek-v4-pro": {
             "provider": "bandelbanget",
             "model": "deepseek-v4-pro",
         },
-        "Kimi K3 (B-S) [1x]": {
+        "kimi-k3": {
             "provider": "bandelbanget",
             "model": "kimi-k3",
         },
-        "GLM 5.1 (B-B) [1x]": {
+        "glm-5.1": {
             "provider": "bandelbanget",
             "model": "glm-5.1",
         },
     },
     "DeepSeek (Direct)": {
-        "DeepSeek V4 Flash (Direct)": {
+        "deepseek-v4-flash": {
             "provider": "deepseek",
             "model": "deepseek-v4-flash",
         },
-        "DeepSeek V4 Pro (Direct)": {
+        "deepseek-v4-pro": {
             "provider": "deepseek",
             "model": "deepseek-v4-pro",
         },
     },
     "Gemini (Direct)": {
-        "Gemini 2.5 Flash (Direct)": {
+        "gemini-flash-latest": {
             "provider": "gemini",
             "model": "gemini-flash-latest",
         },
-        "Gemini 2.5 Flash-Lite (Direct)": {
+        "gemini-flash-lite-latest": {
             "provider": "gemini",
             "model": "gemini-flash-lite-latest",
         },
     },
     "Cartridge Proxy": {
-        "DeepSeek V4.1 Flash (Vision)": {
+        "deepseek-v4.1-flash": {
             "provider": "cartridge",
             "model": "deepseek-v4.1-flash",
         },
     },
     "Kenari Proxy": {
-        "DeepSeek V4.1 Flash (Vision)": {
+        "deepseek-v4.1-flash": {
             "provider": "kenari",
             "model": "deepseek-v4.1-flash",
         },
     },
     "GateAI Proxy": {
-        "DeepSeek V4.1 Flash (Vision)": {
+        "deepseek-v4.1-flash": {
             "provider": "gateai",
             "model": "deepseek-v4.1-flash",
         },
     },
     "Juan Proxy": {
-        "DeepSeek V4.1 Flash (Vision)": {
+        "deepseek-v4.1-flash": {
             "provider": "juan",
             "model": "deepseek-v4.1-flash",
         },
     },
     "SeekAI Proxy": {
-        "DeepSeek V4.1 Flash (Vision)": {
+        "deepseek-v4.1-flash": {
             "provider": "seekai",
             "model": "deepseek-v4.1-flash",
         },
@@ -179,11 +146,11 @@ FALLBACK_MODELS = {
     "9router Proxy": {
         # Id bervendor-prefix "cbai/" hanya ada di gateway 9router — sengaja
         # TIDAK dicantumkan di provider lain supaya tidak bocor/menggantung.
-        "DeepSeek V4.1 Flash cbai (Vision)": {
+        "cbai/deepseek-v4.1-flash": {
             "provider": "9router",
             "model": "cbai/deepseek-v4.1-flash",
         },
-        "DeepSeek V4.1 Flash (Vision)": {
+        "deepseek-v4.1-flash": {
             "provider": "9router",
             "model": "deepseek-v4.1-flash",
         },
@@ -357,23 +324,6 @@ def _get_provider_connection(provider_name: str) -> dict[str, str]:
     raise ValueError(f"Provider tidak dikenal: {provider_name}")
 
 
-def _format_model_label(provider_name: str, model_id: str) -> str:
-    """Format label tampilan dropdown untuk sebuah model ID."""
-    if model_id in MODEL_METADATA:
-        return MODEL_METADATA[model_id]
-    if provider_name == "Kagiro Proxy":
-        return f"Kagiro — {model_id.replace('kagiro/', '')}"
-    if provider_name == "Bandelbanget Proxy":
-        return f"Bandelbanget — {model_id}"
-    if provider_name == "BYOK (Custom)":
-        return f"BYOK — {model_id}"
-    if provider_name == "DeepSeek (Direct)":
-        return f"DeepSeek — {model_id}"
-    if provider_name == "Gemini (Direct)":
-        return f"Gemini — {model_id}"
-    return f"{provider_name} — {model_id}"
-
-
 def _ping_model(
     url: str,
     api_key: str,
@@ -413,8 +363,8 @@ def scan_provider_models(
 ) -> dict[str, dict[str, str]]:
     """Auto-Scan daftar model dari endpoint /models TANPA ping (0 token).
 
-    Hasil dikembalikan sebagai dict `{label: {"provider": ..., "model": ...}}`
-    terurut berdasarkan ID model, persis seperti halaman Cek Model AI.
+    Hasil dikembalikan sebagai dict `{model_id: {"provider": ..., "model": model_id}}`
+    memakai raw ID murni dari server, persis seperti halaman Cek Model AI.
     """
     conn = _get_provider_connection(provider_name)
     base_url = conn["base_url"].rstrip("/")
@@ -476,10 +426,7 @@ def scan_provider_models(
 
     scanned_models: dict[str, dict[str, str]] = {}
     for model_id in model_ids:
-        label = _format_model_label(provider_name, model_id)
-        if label in scanned_models:
-            label = f"{label} ({model_id})"
-        scanned_models[label] = {
+        scanned_models[model_id] = {
             "provider": provider_key,
             "model": model_id,
         }
