@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 
 import requests
@@ -215,6 +216,75 @@ def save_byok_config(base_url: str, api_key: str) -> None:
     _BYOK_DEFAULTS["api_key"] = (api_key or "").strip()
     get_byok_config.clear()
     get_byok_config()
+
+
+@st.cache_resource(show_spinner=False)
+def _get_shared_model_store() -> dict:
+    """Cache bersama lintas tab dan lintas device di memori server Streamlit.
+
+    Memakai `@st.cache_resource` (bukan `st.session_state` yang hanya hidup di
+    1 tab, dan bukan `@st.cache_data` yang ikut terhapus saat tombol Refresh
+    di halaman Log memanggil `st.cache_data.clear()`).
+    """
+    return {
+        "lock": threading.Lock(),
+        "scanned_models": {},
+        "tested_models": {},
+        "test_results": {},
+        "scan_status": {},
+    }
+
+
+def get_provider_cache(provider_name: str) -> dict:
+    """Ambil snapshot hasil Scan/Test tersimpan untuk provider (shared antar tab/device)."""
+    store = _get_shared_model_store()
+    with store["lock"]:
+        return {
+            "has_scanned": provider_name in store["scanned_models"],
+            "scanned_models": dict(store["scanned_models"].get(provider_name, {})),
+            "has_tested": provider_name in store["tested_models"],
+            "tested_models": dict(store["tested_models"].get(provider_name, {})),
+            "test_results": list(store["test_results"].get(provider_name, [])),
+            "scan_status": store["scan_status"].get(provider_name),
+        }
+
+
+def save_provider_scan(
+    provider_name: str,
+    scanned_models: dict,
+    status_message: str,
+) -> None:
+    """Simpan hasil Auto-Scan ke cache bersama dan reset filter Test provider ini."""
+    store = _get_shared_model_store()
+    with store["lock"]:
+        store["scanned_models"][provider_name] = dict(scanned_models)
+        store["tested_models"].pop(provider_name, None)
+        store["test_results"].pop(provider_name, None)
+        store["scan_status"][provider_name] = status_message
+
+
+def save_provider_test(
+    provider_name: str,
+    alive_models: dict,
+    results: list,
+    status_message: str,
+) -> None:
+    """Simpan hasil Test (hanya model hidup + rincian latensi) ke cache bersama."""
+    store = _get_shared_model_store()
+    with store["lock"]:
+        store["tested_models"][provider_name] = dict(alive_models)
+        store["test_results"][provider_name] = list(results)
+        store["scan_status"][provider_name] = status_message
+
+
+def clear_provider_cache(provider_name: str) -> None:
+    """Hapus cache hasil Scan/Test untuk satu provider (mis. saat BYOK diubah)."""
+    store = _get_shared_model_store()
+    with store["lock"]:
+        store["scanned_models"].pop(provider_name, None)
+        store["tested_models"].pop(provider_name, None)
+        store["test_results"].pop(provider_name, None)
+        store["scan_status"].pop(provider_name, None)
 
 
 def _safe_secret(key: str) -> str:
