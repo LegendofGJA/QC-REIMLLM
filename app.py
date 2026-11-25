@@ -326,7 +326,7 @@ st.markdown(
     }
     .home-feature p { margin: 0; color: #a6bdd6; font-size: 0.77rem; line-height: 1.55; }
 
-    .home-secondary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .home-secondary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
     a.home-secondary-link { color: inherit !important; text-decoration: none !important; }
     .home-secondary-card {
         height: 100%; padding: 20px 16px; text-align: center;
@@ -760,6 +760,14 @@ render_html(
                 <div class="home-secondary-icon">&#128225;</div>
                 <div class="home-secondary-title">Traffic Log</div>
                 <div class="home-secondary-desc">Riwayat penggunaan aplikasi</div>
+            </div>
+        </a>
+
+        <a href="/Panduan" class="home-secondary-link" target="_self" aria-label="Buka Panduan dan Docs">
+            <div class="home-secondary-card">
+                <div class="home-secondary-icon">&#128214;</div>
+                <div class="home-secondary-title">Panduan &amp; Docs</div>
+                <div class="home-secondary-desc">Cara pakai web, kelola provider AI, &amp; FAQ</div>
             </div>
         </a>
     </div>
