@@ -128,10 +128,11 @@ st.markdown("---")
 # ── HAPUS SEMUA LOG ──
 st.markdown(
     """
-    <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);
-         border-radius:10px; padding:14px 18px; margin-bottom:18px;">
-        <p style="color:#fca5a5; font-size:0.82rem; margin:0; line-height:1.5;">
-            <b>Hapus Semua</b> akan menghapus SELURUH log aktivitas. Aksi ini tidak bisa dibatalkan.
+    <div style="background:rgba(255,0,127,0.12); border:1px solid rgba(255,0,127,0.50);
+         border-left:4px solid #ff007f; border-radius:10px; padding:14px 18px; margin-bottom:18px;
+         box-shadow:0 0 20px rgba(255,0,127,0.20);">
+        <p style="color:#ff85c0; font-size:0.84rem; margin:0; line-height:1.5;">
+            <b style="color:#ff007f;">Hapus Semua</b> akan menghapus SELURUH log aktivitas. Aksi ini tidak bisa dibatalkan.
         </p>
     </div>
     """,
