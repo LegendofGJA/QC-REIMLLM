@@ -81,6 +81,10 @@ flowchart LR
 | 6 | `pages/6_Admin_Hapus_Data.py` | 🔐 **Admin Data** | Filter, edit metadata, hapus individual, atau hapus semua draft audit (proteksi password) |
 | 7 | `pages/7_Audit_Log.py` | 📝 **Audit Log** | Riwayat Save / Update / Download audit dengan timestamp WIB + hapus log (proteksi password) |
 | 8 | `pages/8_Traffic_Log.py` | 📈 **Traffic Log** | Monitoring read-only riwayat pemakaian aplikasi (proteksi password) |
+| 9 | `pages/9_Panduan.py` | 📖 **Panduan & Docs** | Dokumentasi interaktif langsung di dalam web + tombol download `DOCS.md` |
+
+> [!TIP]
+> Baca panduan lengkap (cara pakai, tambah/hapus provider AI, kustomisasi template, & troubleshooting) di **[DOCS.md](DOCS.md)**.
 
 ---
 
@@ -94,6 +98,7 @@ audit_core.py                   Koneksi Supabase (draft & log) + generator workb
 llm_core.py                     Multi-provider LLM, Zero-Token Scan, Ping Test, & shared @st.cache_resource
 structure.json                  130 item checklist audit + ETC note
 template.xlsx                   Template Excel resmi audit (DETAIL AUDIT + ATTACHMENT)
+DOCS.md                         Dokumentasi lengkap All-in-One (penggunaan, provider AI, & troubleshooting)
 
 reim_llm_core.py                Multi-provider Vision LLM untuk OCR reimburse
 reim_extract_core.py            Prompt OCR + parser tanggal ID + sorting kronologis + dedup Flazz
@@ -102,7 +107,7 @@ reim_pdf_core.py                Penggabung gambar → PDF lossless via img2pdf (
 reim_gps_core.py                Ekstraksi EXIF GPS + reverse geocode Nominatim (nama lokasi & alamat)
 FORM_REIMBURSE_template.xlsx    Template Excel reimburse
 
-pages/                          8 halaman Streamlit (urutan sidebar)
+pages/                          9 halaman Streamlit (termasuk 9_Panduan.py interaktif)
 presets/                        Preset template Excel QC Image Inserter
 .devcontainer/                  Konfigurasi GitHub Codespaces / Dev Container
 .streamlit/secrets.toml.example Contoh konfigurasi secrets
