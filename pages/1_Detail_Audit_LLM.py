@@ -313,10 +313,10 @@ with st.expander("🤖 Proses Temuan dengan AI", expanded=True):
 
         alive_models = {}
         for r in alive_results:
-            clean_label = r["label"].removeprefix("✅ ").strip()
-            alive_models[f"✅ {clean_label}"] = {
+            model_id = r["model"]
+            alive_models[model_id] = {
                 "provider": r["provider"],
-                "model": r["model"],
+                "model": model_id,
             }
 
         if alive_models:
