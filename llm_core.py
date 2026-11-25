@@ -1,13 +1,14 @@
 """
 Modul integrasi LLM untuk halaman Detail Audit (AI).
-Mendukung Auto-Scan + Health Check (Ping Test) per provider.
-Hanya model yang merespons 200 OK yang akan dimasukkan ke list.
+Mendukung Auto-Scan daftar model (/models tanpa memakai token)
+dan Health Check (Ping Test) terpisah per provider.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import time
 
 import requests
 import streamlit as st
@@ -216,11 +217,98 @@ def save_byok_config(base_url: str, api_key: str) -> None:
     get_byok_config()
 
 
+def _safe_secret(key: str) -> str:
+    """Ambil secret dengan aman tanpa error jika secrets.toml belum ada."""
+    try:
+        return (st.secrets.get(key, "") or "").strip()
+    except Exception:
+        return ""
+
+
+def _get_provider_connection(provider_name: str) -> dict[str, str]:
+    """Kembalikan konfigurasi koneksi (provider_key, base_url, api_key, mode)
+    untuk provider yang dipilih."""
+    if provider_name == "Kagiro Proxy":
+        return {
+            "provider_key": "kagiro",
+            "base_url": "https://api.kagiro.net/v1",
+            "api_key": _safe_secret("KAGIRO_API_KEY"),
+            "mode": "openai",
+            "secret_name": "KAGIRO_API_KEY",
+        }
+
+    if provider_name == "Bandelbanget Proxy":
+        return {
+            "provider_key": "bandelbanget",
+            "base_url": "https://bandelbanget.xyz/v1",
+            "api_key": _safe_secret("BANDEL_API_KEY"),
+            "mode": "openai",
+            "secret_name": "BANDEL_API_KEY",
+        }
+
+    if provider_name == "DeepSeek (Direct)":
+        return {
+            "provider_key": "deepseek",
+            "base_url": "https://api.deepseek.com/v1",
+            "api_key": _safe_secret("DEEPSEEK_API_KEY"),
+            "mode": "openai",
+            "secret_name": "DEEPSEEK_API_KEY",
+        }
+
+    if provider_name == "Gemini (Direct)":
+        return {
+            "provider_key": "gemini",
+            "base_url": "https://generativelanguage.googleapis.com/v1beta",
+            "api_key": _safe_secret("GEMINI_API_KEY"),
+            "mode": "gemini",
+            "secret_name": "GEMINI_API_KEY",
+        }
+
+    if provider_name == "BYOK (Custom)":
+        cfg = get_byok_config()
+        return {
+            "provider_key": "byok",
+            "base_url": cfg.get("base_url", "").rstrip("/"),
+            "api_key": cfg.get("api_key", "").strip(),
+            "mode": "openai",
+            "secret_name": "BYOK API Key",
+        }
+
+    if provider_name in _GENERIC_GATEWAYS:
+        prefix, default_url = _GENERIC_GATEWAYS[provider_name]
+        return {
+            "provider_key": prefix.lower(),
+            "base_url": _resolve_base_url(prefix, default_url),
+            "api_key": _safe_secret(f"{prefix}_API_KEY"),
+            "mode": "openai",
+            "secret_name": f"{prefix}_API_KEY",
+        }
+
+    raise ValueError(f"Provider tidak dikenal: {provider_name}")
+
+
+def _format_model_label(provider_name: str, model_id: str) -> str:
+    """Format label tampilan dropdown untuk sebuah model ID."""
+    if model_id in MODEL_METADATA:
+        return MODEL_METADATA[model_id]
+    if provider_name == "Kagiro Proxy":
+        return f"Kagiro — {model_id.replace('kagiro/', '')}"
+    if provider_name == "Bandelbanget Proxy":
+        return f"Bandelbanget — {model_id}"
+    if provider_name == "BYOK (Custom)":
+        return f"BYOK — {model_id}"
+    if provider_name == "DeepSeek (Direct)":
+        return f"DeepSeek — {model_id}"
+    if provider_name == "Gemini (Direct)":
+        return f"Gemini — {model_id}"
+    return f"{provider_name} — {model_id}"
+
+
 def _ping_model(
     url: str,
     api_key: str,
     model_id: str,
-    timeout: int = 6,
+    timeout: int = 20,
 ) -> bool:
     """Tes kesehatan mini untuk memastikan model merespons 200 OK."""
     try:
@@ -238,7 +326,7 @@ def _ping_model(
                         "content": TEST_PROMPT,
                     }
                 ],
-                "max_tokens": 10,
+                "max_tokens": 15,
             },
             timeout=timeout,
         )
@@ -249,186 +337,177 @@ def _ping_model(
         return False
 
 
+def scan_provider_models(
+    provider_name: str,
+    timeout: int = 15,
+) -> dict[str, dict[str, str]]:
+    """Auto-Scan daftar model dari endpoint /models TANPA ping (0 token).
+
+    Hasil dikembalikan sebagai dict `{label: {"provider": ..., "model": ...}}`
+    terurut berdasarkan ID model, persis seperti halaman Cek Model AI.
+    """
+    conn = _get_provider_connection(provider_name)
+    base_url = conn["base_url"].rstrip("/")
+    api_key = conn["api_key"]
+    provider_key = conn["provider_key"]
+    mode = conn["mode"]
+
+    if not api_key:
+        raise RuntimeError(
+            f"{conn['secret_name']} belum diisi atau tidak ditemukan di Secrets."
+        )
+    if not base_url:
+        raise RuntimeError(
+            f"Base URL untuk {provider_name} belum diisi."
+        )
+
+    if mode == "gemini":
+        response = requests.get(
+            f"{base_url}/models",
+            params={"key": api_key},
+            timeout=timeout,
+        )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Gagal Auto-Scan (HTTP {response.status_code}): "
+                f"{response.text[:200]}"
+            )
+        raw_entries = response.json().get("models", [])
+        model_ids = sorted(
+            m.get("name", "").removeprefix("models/")
+            for m in raw_entries
+            if isinstance(m, dict)
+            and m.get("name")
+            and "generateContent" in (m.get("supportedGenerationMethods") or [])
+        )
+    else:
+        response = requests.get(
+            f"{base_url}/models",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=timeout,
+        )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Gagal Auto-Scan (HTTP {response.status_code}): "
+                f"{response.text[:200]}"
+            )
+        data = response.json()
+        raw_list = data.get("data", data) if isinstance(data, dict) else data
+        model_ids = sorted(
+            {
+                m["id"]
+                for m in (raw_list if isinstance(raw_list, list) else [])
+                if isinstance(m, dict) and m.get("id")
+            }
+        )
+
+    if not model_ids:
+        raise RuntimeError("Server tidak mengembalikan daftar model.")
+
+    scanned_models: dict[str, dict[str, str]] = {}
+    for model_id in model_ids:
+        label = _format_model_label(provider_name, model_id)
+        if label in scanned_models:
+            label = f"{label} ({model_id})"
+        scanned_models[label] = {
+            "provider": provider_key,
+            "model": model_id,
+        }
+
+    return scanned_models
+
+
+def ping_provider_model(
+    provider_name: str,
+    model_id: str,
+    timeout: int = 20,
+) -> dict:
+    """Tes kesehatan (ping + latensi) satu model milik provider yang dipilih.
+
+    Mengembalikan dict dengan format sama seperti halaman Cek Model AI:
+    `{"model": str, "alive": bool, "latency": float | None, "detail": str}`.
+    """
+    conn = _get_provider_connection(provider_name)
+    base_url = conn["base_url"].rstrip("/")
+    api_key = conn["api_key"]
+    mode = conn["mode"]
+
+    if not api_key:
+        return {
+            "model": model_id,
+            "alive": False,
+            "latency": None,
+            "detail": f"{conn['secret_name']} belum diisi",
+        }
+    if not base_url:
+        return {
+            "model": model_id,
+            "alive": False,
+            "latency": None,
+            "detail": "Base URL belum diisi",
+        }
+
+    start_time = time.time()
+    try:
+        if mode == "gemini":
+            resp = requests.post(
+                f"{base_url}/models/{model_id}:generateContent",
+                params={"key": api_key},
+                json={
+                    "contents": [{"parts": [{"text": TEST_PROMPT}]}],
+                    "generationConfig": {"maxOutputTokens": 15},
+                },
+                timeout=timeout,
+            )
+        else:
+            resp = requests.post(
+                f"{base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model_id,
+                    "messages": [{"role": "user", "content": TEST_PROMPT}],
+                    "max_tokens": 15,
+                },
+                timeout=timeout,
+            )
+        latency = time.time() - start_time
+        if resp.status_code == 200:
+            return {
+                "model": model_id,
+                "alive": True,
+                "latency": latency,
+                "detail": "OK",
+            }
+        return {
+            "model": model_id,
+            "alive": False,
+            "latency": latency,
+            "detail": f"HTTP {resp.status_code}",
+        }
+    except Exception as exc:
+        return {
+            "model": model_id,
+            "alive": False,
+            "latency": None,
+            "detail": str(exc)[:80],
+        }
+
+
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_provider_models(
     provider_name: str,
 ) -> dict[str, dict[str, str]]:
-    """Scan + Ping Test model aktif khusus provider yang dipilih."""
-    scanned_models = {}
+    """Ambil daftar model provider TANPA ping otomatis (0 token).
 
-    if provider_name == "Kagiro Proxy":
-        api_key = st.secrets.get("KAGIRO_API_KEY", "")
-
-        if api_key:
-            try:
-                response = requests.get(
-                    "https://api.kagiro.net/v1/models",
-                    headers={
-                        "Authorization": f"Bearer {api_key}"
-                    },
-                    timeout=8,
-                )
-
-                if response.status_code == 200:
-                    raw_models = [
-                        model.get("id")
-                        for model in response.json().get("data", [])
-                        if model.get("id")
-                    ]
-
-                    for model_id in raw_models:
-                        is_active = _ping_model(
-                            "https://api.kagiro.net/v1/chat/completions",
-                            api_key,
-                            model_id,
-                        )
-
-                        if is_active:
-                            label = MODEL_METADATA.get(
-                                model_id,
-                                (
-                                    "Kagiro — "
-                                    f"{model_id.replace('kagiro/', '')}"
-                                ),
-                            )
-
-                            scanned_models[f"✅ {label}"] = {
-                                "provider": "kagiro",
-                                "model": model_id,
-                            }
-
-            except Exception:
-                pass
-
-    elif provider_name == "Bandelbanget Proxy":
-        api_key = st.secrets.get("BANDEL_API_KEY", "")
-
-        if api_key:
-            try:
-                response = requests.get(
-                    "https://bandelbanget.xyz/v1/models",
-                    headers={
-                        "Authorization": f"Bearer {api_key}"
-                    },
-                    timeout=8,
-                )
-
-                if response.status_code == 200:
-                    raw_models = [
-                        model.get("id")
-                        for model in response.json().get("data", [])
-                        if model.get("id")
-                    ]
-
-                    for model_id in raw_models:
-                        is_active = _ping_model(
-                            "https://bandelbanget.xyz/v1/chat/completions",
-                            api_key,
-                            model_id,
-                        )
-
-                        if is_active:
-                            label = MODEL_METADATA.get(
-                                model_id,
-                                f"Bandelbanget — {model_id}",
-                            )
-
-                            scanned_models[f"✅ {label}"] = {
-                                "provider": "bandelbanget",
-                                "model": model_id,
-                            }
-
-            except Exception:
-                pass
-
-    elif provider_name == "BYOK (Custom)":
-        cfg = get_byok_config()
-        base_url = cfg.get("base_url", "").rstrip("/")
-        api_key = cfg.get("api_key", "")
-
-        if base_url and api_key:
-            try:
-                response = requests.get(
-                    f"{base_url}/models",
-                    headers={
-                        "Authorization": f"Bearer {api_key}"
-                    },
-                    timeout=8,
-                )
-
-                if response.status_code == 200:
-                    raw_models = [
-                        model.get("id")
-                        for model in response.json().get("data", [])
-                        if model.get("id")
-                    ]
-
-                    for model_id in raw_models:
-                        is_active = _ping_model(
-                            f"{base_url}/chat/completions",
-                            api_key,
-                            model_id,
-                        )
-
-                        if is_active:
-                            label = f"BYOK — {model_id}"
-
-                            scanned_models[f"✅ {label}"] = {
-                                "provider": "byok",
-                                "model": model_id,
-                            }
-
-            except Exception:
-                pass
-
-    elif provider_name in _GENERIC_GATEWAYS:
-        # Gateway OpenAI-compatible generik (Cartridge / Kenari / GateAI /
-        # Juan / SeekAI / 9router). Pola sama dengan Kagiro: ambil /models lalu
-        # ping tiap model sebelum ditampilkan.
-        prefix, default_url = _GENERIC_GATEWAYS[provider_name]
-        base_url = _resolve_base_url(prefix, default_url)
-        api_key = st.secrets.get(f"{prefix}_API_KEY", "")
-
-        if base_url and api_key:
-            try:
-                response = requests.get(
-                    f"{base_url}/models",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    timeout=8,
-                )
-
-                if response.status_code == 200:
-                    raw_models = [
-                        model.get("id")
-                        for model in response.json().get("data", [])
-                        if model.get("id")
-                    ]
-
-                    for model_id in raw_models:
-                        is_active = _ping_model(
-                            f"{base_url.rstrip('/')}/chat/completions",
-                            api_key,
-                            model_id,
-                        )
-
-                        if is_active:
-                            label = MODEL_METADATA.get(
-                                model_id,
-                                f"{provider_name} — {model_id}",
-                            )
-
-                            scanned_models[f"✅ {label}"] = {
-                                "provider": prefix.lower(),
-                                "model": model_id,
-                            }
-
-            except Exception:
-                pass
-
-    if scanned_models:
-        return scanned_models
-
-    return FALLBACK_MODELS.get(provider_name, {})
+    Fallback ke FALLBACK_MODELS jika endpoint /models gagal atau API key kosong.
+    """
+    try:
+        return scan_provider_models(provider_name, timeout=8)
+    except Exception:
+        return FALLBACK_MODELS.get(provider_name, {})
 
 
 def _flat_item_list() -> list[dict]:
