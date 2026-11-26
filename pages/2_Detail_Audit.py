@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from style import inject_css, inject_sidebar_brand, inject_footer
 from scoring import compute_all
@@ -24,82 +25,55 @@ st.markdown(
     """
     <style>
     .cat-banner {
-        background: #A86BFF;
-        color: #0F0F0F;
-        font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+        background: linear-gradient(90deg, rgba(255, 0, 127, 0.85) 0%, rgba(120, 0, 255, 0.72) 52%, rgba(0, 240, 255, 0.78) 100%);
+        color: #ffffff;
+        font-family: 'Orbitron', sans-serif;
         font-weight: 800;
-        font-size: 1rem;
-        padding: 10px 16px;
-        border: 2.5px solid #0F0F0F;
-        border-radius: 12px;
-        box-shadow: 4px 4px 0px #0F0F0F;
-        margin: 22px 0 10px 0;
-        letter-spacing: 0.03em;
+        font-size: 0.92rem;
+        padding: 9px 16px;
+        border: 1px solid rgba(0, 240, 255, 0.65);
+        border-radius: 8px;
+        margin: 18px 0 8px 0;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+        box-shadow: 0 0 18px rgba(255, 0, 127, 0.35), 0 0 14px rgba(0, 240, 255, 0.28);
     }
     .subcat-label {
-        display: inline-block;
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 800;
-        font-size: 0.85rem;
-        padding: 5px 12px;
-        margin: 12px 0 8px 0;
-        background: #FFD23F;
-        color: #0F0F0F;
-        border: 2px solid #0F0F0F;
-        border-radius: 9px;
-        box-shadow: 3px 3px 0px #0F0F0F;
-    }
-    /* Keep checklist rows compact while preserving crisp white neo-brutalist cards */
-    div[data-testid="stHorizontalBlock"] > div[data-testid="stVerticalBlock"] {
-        padding: 12px 14px !important;
-        box-shadow: 3px 3px 0px #0F0F0F !important;
-        border-radius: 12px !important;
+        font-family: 'Chakra Petch', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin: 10px 0 6px 4px;
+        color: #00f0ff;
+        text-shadow: 0 0 10px rgba(0, 240, 255, 0.55);
+        border-left: 3px solid #ff007f;
+        padding-left: 10px;
     }
     div.st-key-floating_actions {
-        position: fixed !important;
-        left: auto !important;
-        right: 20px !important;
-        bottom: 20px !important;
-        z-index: 999999 !important;
-        background: #FFD23F !important;
-        padding: 8px 10px !important;
-        border-radius: 16px !important;
-        box-shadow: 5px 5px 0px #0F0F0F !important;
-        border: 2.5px solid #0F0F0F !important;
-        width: auto !important;
-        max-width: calc(100vw - 32px) !important;
-        display: inline-block !important;
+        position: fixed;
+        left: 14px;
+        bottom: 14px;
+        z-index: 9999;
+        background: rgba(7, 9, 24, 0.94);
+        padding: 6px;
+        border-radius: 999px;
+        box-shadow: 0 0 22px rgba(0, 240, 255, 0.42), 0 0 16px rgba(255, 0, 127, 0.32);
+        border: 1px solid rgba(0, 240, 255, 0.7);
+        width: auto;
+        display: inline-block;
     }
     div.st-key-floating_actions [data-testid="stHorizontalBlock"] {
-        gap: 8px !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
+        gap: 6px !important;
     }
-    div.st-key-floating_actions [data-testid="stColumn"],
-    div.st-key-floating_actions [data-testid="stHorizontalBlock"] > div[data-testid="stVerticalBlock"] {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        width: auto !important;
-        min-width: 0 !important;
-        flex: 0 0 auto !important;
-    }
-    div.st-key-floating_actions [data-testid="stButton"] button,
-    div.st-key-floating_actions [data-testid="stDownloadButton"] button,
-    div.st-key-floating_actions [data-testid="stDownloadButton"] a {
-        font-size: 0.9rem !important;
-        font-weight: 800 !important;
-        padding: 0.48rem 0.9rem !important;
-        width: auto !important;
+    div.st-key-floating_actions button,
+    div.st-key-floating_actions a {
+        font-size: 1.1rem !important;
+        padding: 0.45rem !important;
+        width: 42px !important;
         height: 42px !important;
-        min-height: 42px !important;
-        white-space: nowrap !important;
-        border-radius: 11px !important;
-        border: 2.5px solid #0F0F0F !important;
-        box-shadow: 3px 3px 0px #0F0F0F !important;
-        display: inline-flex !important;
+        border-radius: 50% !important;
+        display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         margin: 0 !important;
@@ -108,6 +82,100 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def inject_scroll_buttons():
+    """Tombol sticky scroll-to-top (kanan atas) & scroll-to-bottom (kanan bawah).
+
+    Dipasang lewat components.html (bukan st.markdown) supaya bisa dieksekusi
+    sebagai JS beneran dan menempelkan tombolnya langsung ke `body` paling
+    atas lewat window.parent.document -- ini melewati semua container
+    Streamlit yang suka diberi transform/overflow oleh tema, yang sebelumnya
+    bikin `position: fixed` versi CSS-murni jadi ikut ke-scroll & hilang.
+    Klik tombolnya juga otomatis mencari elemen yang BENERAN scroll di
+    halaman (bukan asumsi window), jadi tetap jalan walau struktur DOM
+    Streamlit berubah antar versi.
+    """
+    components.html(
+        """
+        <script>
+        (function() {
+            const doc = window.parent.document;
+
+            function getScrollEl() {
+                const candidates = [
+                    doc.querySelector('section.main'),
+                    doc.querySelector('[data-testid="stAppViewContainer"]'),
+                    doc.querySelector('[data-testid="stMain"]'),
+                    doc.scrollingElement,
+                    doc.documentElement,
+                ].filter(Boolean);
+                for (const el of candidates) {
+                    if (el.scrollHeight > el.clientHeight + 10) return el;
+                }
+                return candidates[0] || doc.documentElement;
+            }
+
+            const old = doc.getElementById('qc-scroll-nav-wrapper');
+            if (old) old.remove();
+
+            const wrapper = doc.createElement('div');
+            wrapper.id = 'qc-scroll-nav-wrapper';
+            wrapper.innerHTML = `
+                <style>
+                    #qc-scroll-nav-wrapper .qc-scroll-btn {
+                        position: fixed !important;
+                        right: 18px;
+                        z-index: 999999;
+                        width: 44px;
+                        height: 44px;
+                        border-radius: 50%;
+                        background: rgba(7, 9, 24, 0.94);
+                        color: #00f0ff;
+                        border: 1px solid rgba(0, 240, 255, 0.72);
+                        box-shadow: 0 0 18px rgba(0, 240, 255, 0.45), 0 0 10px rgba(255, 0, 127, 0.25);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.1rem;
+                        line-height: 1;
+                        cursor: pointer;
+                        transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+                    }
+                    #qc-scroll-nav-wrapper .qc-scroll-btn:hover {
+                        background: linear-gradient(135deg, #00f0ff, #ff007f);
+                        color: #ffffff;
+                        border-color: #ff007f;
+                        box-shadow: 0 0 24px rgba(255, 0, 127, 0.75), 0 0 18px rgba(0, 240, 255, 0.6);
+                        transform: translateY(-2px);
+                    }
+                    #qc-scroll-top { top: 58px; }
+                    #qc-scroll-bottom { bottom: 56px; }
+                    @media (max-width: 640px) {
+                        #qc-scroll-top { top: 64px; }
+                        #qc-scroll-bottom { bottom: 78px; }
+                    }
+                </style>
+                <button id="qc-scroll-top" class="qc-scroll-btn" title="Ke atas" aria-label="Gulir ke atas" type="button">&#9650;</button>
+                <button id="qc-scroll-bottom" class="qc-scroll-btn" title="Ke bawah" aria-label="Gulir ke bawah" type="button">&#9660;</button>
+            `;
+            doc.body.appendChild(wrapper);
+
+            doc.getElementById('qc-scroll-top').onclick = function() {
+                getScrollEl().scrollTo({top: 0, behavior: 'smooth'});
+            };
+            doc.getElementById('qc-scroll-bottom').onclick = function() {
+                const el = getScrollEl();
+                el.scrollTo({top: el.scrollHeight, behavior: 'smooth'});
+            };
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+
+inject_scroll_buttons()
 
 structure = load_structure()
 supabase = get_supabase_client()
@@ -149,6 +217,38 @@ def _sync_remark_widgets(remarks: dict):
                 num = str(it["number"])
                 wk = f"{prefix}_remark_{num}"
                 st.session_state[wk] = _safe_remark(remarks.get(num, ""))
+
+
+def build_current_remarks(structure) -> dict:
+    """Kumpulkan Remarks TERKINI: kalau widget-nya sudah pernah dirender pada
+    run ini/sebelumnya, ambil dari session_state widget-nya langsung (yang
+    selalu up-to-date walau textarea-nya belum dirender ulang di run ini);
+    kalau belum pernah, fallback ke state 'remarks' tersimpan. Dipakai untuk
+    pratinjau skor di TENGAH halaman, sebelum tabel checklist dirender."""
+    current = {}
+    for cat in structure:
+        if cat.get("name") == "ETC":
+            continue
+        if "subcategories" in cat:
+            for sub in cat["subcategories"]:
+                prefix = f"editor_{sub['row']}"
+                for it in sub["items"]:
+                    num = str(it["number"])
+                    wk = f"{prefix}_remark_{num}"
+                    if wk in st.session_state:
+                        current[num] = _safe_remark(st.session_state[wk])
+                    else:
+                        current[num] = _safe_remark(st.session_state["remarks"].get(num, ""))
+        else:
+            prefix = f"editor_{cat['row']}"
+            for it in cat.get("items", []):
+                num = str(it["number"])
+                wk = f"{prefix}_remark_{num}"
+                if wk in st.session_state:
+                    current[num] = _safe_remark(st.session_state[wk])
+                else:
+                    current[num] = _safe_remark(st.session_state["remarks"].get(num, ""))
+    return current
 
 
 def reset_form():
@@ -253,12 +353,20 @@ st.markdown("---")
 
 c1, c2 = st.columns(2)
 with c1:
-    st.session_state["store_name"] = st.text_input("STORE NAME", value=st.session_state["store_name"])
-    st.session_state["date1"] = st.text_input("DATE", value=st.session_state["date1"])
-    st.session_state["date2"] = st.text_input("DATE (2)", value=st.session_state["date2"])
+    st.text_input("STORE NAME", key="store_name")
+    st.text_input("DATE", key="date1")
+    st.text_input("DATE (2)", key="date2")
 with c2:
-    st.session_state["auditor"] = st.text_input("AUDITOR", value=st.session_state["auditor"])
-    st.session_state["pic_on_duty"] = st.text_input("PIC ON DUTY", value=st.session_state["pic_on_duty"])
+    st.text_input("AUDITOR", key="auditor")
+    st.text_input("PIC ON DUTY", key="pic_on_duty")
+
+st.markdown("---")
+
+_preview_result = compute_all(structure, build_current_remarks(structure))
+pm1, pm2, pm3 = st.columns(3)
+pm1.metric("TOTAL SCORE (E184)", round(_preview_result["grand_percent_sum"], 2))
+pm2.metric("FINAL SCORE", round(_preview_result["final_score"], 2))
+pm3.metric("GRADING", _preview_result["grade"])
 
 st.markdown("---")
 st.subheader("DETAIL TO VERIFY")
@@ -304,7 +412,7 @@ def render_table(items: list[dict], key: str):
             label_visibility="collapsed", height=68,
         )
         remarks_state[number] = _safe_remark(new_val)
-        st.markdown("<hr style='margin:6px 0;height:1.5px;background:#0F0F0F;opacity:0.25;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin:4px 0;opacity:0.15'>", unsafe_allow_html=True)
 
 
 def category_banner(name: str):
@@ -340,124 +448,62 @@ m1.metric("TOTAL SCORE (E184)", round(result["grand_percent_sum"], 2))
 m2.metric("FINAL SCORE", round(result["final_score"], 2))
 m3.metric("GRADING", result["grade"])
 
+st.markdown("<div style=\"height:110px\"></div>", unsafe_allow_html=True)
+
 # ── Format score untuk log (Save & Download pakai ini) ──
 _score_str = f"{round(result['final_score'], 2)}, {result['grade']}"
 
-wb = build_filled_workbook(
-    st.session_state["store_name"],
-    st.session_state["date1"],
-    st.session_state["date2"],
-    st.session_state["auditor"],
-    st.session_state["pic_on_duty"],
-    remarks_state,
-)
-excel_bytes = workbook_to_bytes(wb)
-fname = f"Audit_{st.session_state['store_name'] or 'Store'}_{st.session_state['date1'] or 'Date'}.xlsx".replace(" ", "_")
-
-
-def _handle_save_draft() -> tuple[str, str]:
-    if not st.session_state["store_name"] or not st.session_state["date1"]:
-        return ("error", "STORE NAME & DATE wajib diisi.")
-    try:
-        resp = save_draft({
-            "store_name": st.session_state["store_name"],
-            "audit_date": st.session_state["date1"],
-            "date2": st.session_state["date2"],
-            "auditor": st.session_state["auditor"],
-            "pic_on_duty": st.session_state["pic_on_duty"],
-            "remarks": remarks_state,
-        })
-        st.query_params["store"] = st.session_state["store_name"]
-        st.query_params["date"] = st.session_state["date1"]
-        st.session_state["loaded_key"] = (st.session_state["store_name"], st.session_state["date1"])
-        if resp and getattr(resp, "data", None) and isinstance(resp.data, list) and resp.data:
-            row_id = resp.data[0].get("id")
-            if row_id is not None:
-                st.session_state["loaded_id"] = row_id
-        # ── LOG: Save ──
-        log_audit_traffic(
-            st.session_state.get("auditor", ""),
-            st.session_state.get("store_name", ""),
-            st.session_state.get("date1", ""),
-            _score_str,
-            "Save",
-        )
-        return ("success", "Draft berhasil disimpan ke Supabase!")
-    except Exception as e:
-        return ("error", f"Gagal menyimpan ke Supabase: {e}")
-
-
-def _handle_download_log() -> None:
-    log_audit_traffic(
-        st.session_state.get("auditor", ""),
-        st.session_state.get("store_name", ""),
-        st.session_state.get("date1", ""),
-        _score_str,
-        "Download",
-    )
-
-
-# ── TOMBOL AKSI UTAMA (SIMPAN KE SUPABASE & DOWNLOAD EXCEL) ──
-st.markdown("---")
-st.markdown(
-    """
-    <div class="ilp-action-head">
-        <h3>💾 Simpan &amp; Export Laporan Audit</h3>
-        <p>Simpan draft ke Supabase agar bisa dilanjutkan di QC Image Inserter, atau langsung download Excel</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-save_feedback = None
-act_col1, act_col2 = st.columns(2)
-with act_col1:
-    if st.button(
-        "💾 Simpan Draft ke Supabase",
-        type="primary",
-        use_container_width=True,
-        key="btn_save_supabase_main",
-    ):
-        save_feedback = _handle_save_draft()
-
-with act_col2:
-    if st.download_button(
-        "⬇️ Download Excel (.xlsx)",
-        data=excel_bytes,
-        file_name=fname,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
-        key="btn_download_excel_main",
-    ):
-        _handle_download_log()
-
-# ── PANEL TOMBOL MELAYANG CEPAT (KANAN BAWAH — TIDAK TERTUTUP SIDEBAR) ──
 with st.container(key="floating_actions"):
     fc1, fc2 = st.columns(2)
     with fc1:
-        if st.button("💾 Simpan", help="Save draft ke Supabase", type="primary", key="btn_save_supabase_float"):
-            save_feedback = _handle_save_draft()
+        if st.button("💾", help="Save draft ke Supabase"):
+            if not st.session_state["store_name"] or not st.session_state["date1"]:
+                st.error("STORE NAME & DATE wajib diisi.")
+            else:
+                try:
+                    save_draft({
+                        "store_name": st.session_state["store_name"],
+                        "audit_date": st.session_state["date1"],
+                        "date2": st.session_state["date2"],
+                        "auditor": st.session_state["auditor"],
+                        "pic_on_duty": st.session_state["pic_on_duty"],
+                        "remarks": remarks_state,
+                    })
+                    st.query_params["store"] = st.session_state["store_name"]
+                    st.query_params["date"] = st.session_state["date1"]
+                    st.session_state["loaded_key"] = (st.session_state["store_name"], st.session_state["date1"])
+                    # ── LOG: Save ──
+                    log_audit_traffic(
+                        st.session_state.get("auditor", ""),
+                        st.session_state.get("store_name", ""),
+                        st.session_state.get("date1", ""),
+                        _score_str,
+                        "Save",
+                    )
+                    st.success("Tersimpan!")
+                except Exception as e:
+                    st.error(f"Gagal: {e}")
 
     with fc2:
+        wb = build_filled_workbook(
+            st.session_state["store_name"], st.session_state["date1"], st.session_state["date2"],
+            st.session_state["auditor"], st.session_state["pic_on_duty"], remarks_state,
+        )
+        fname = f"Audit_{st.session_state['store_name'] or 'Store'}_{st.session_state['date1'] or 'Date'}.xlsx".replace(" ", "_")
         if st.download_button(
-            "⬇️ Excel",
-            data=excel_bytes,
+            "⬇️",
+            data=workbook_to_bytes(wb),
             file_name=fname,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             help="Download Excel",
-            key="btn_download_excel_float",
         ):
-            _handle_download_log()
-
-if save_feedback:
-    kind, msg = save_feedback
-    if kind == "success":
-        st.success(msg)
-        st.toast(msg)
-    else:
-        st.error(msg)
-
-st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
+            # ── LOG: Download ──
+            log_audit_traffic(
+                st.session_state.get("auditor", ""),
+                st.session_state.get("store_name", ""),
+                st.session_state.get("date1", ""),
+                _score_str,
+                "Download",
+            )
 
 inject_footer()
-
