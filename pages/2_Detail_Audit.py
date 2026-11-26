@@ -1,6 +1,5 @@
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from style import inject_css, inject_sidebar_brand, inject_footer
 from scoring import compute_all
@@ -20,7 +19,7 @@ st.set_page_config(page_title="DETAIL AUDIT", page_icon="📋", layout="wide")
 inject_css()
 inject_sidebar_brand()
 
-# CSS Neo-Brutalism khusus DETAIL AUDIT + panel tombol melayang
+# Panel tombol kecil melayang di kiri bawah
 st.markdown(
     """
     <style>
@@ -43,8 +42,6 @@ st.markdown(
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 800;
         font-size: 0.85rem;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
         padding: 5px 12px;
         margin: 12px 0 8px 0;
         background: #FFD23F;
@@ -62,8 +59,8 @@ st.markdown(
     div.st-key-floating_actions {
         position: fixed !important;
         left: auto !important;
-        right: 18px !important;
-        bottom: 18px !important;
+        right: 20px !important;
+        bottom: 20px !important;
         z-index: 999999 !important;
         background: #FFD23F !important;
         padding: 8px 10px !important;
@@ -94,7 +91,7 @@ st.markdown(
     div.st-key-floating_actions [data-testid="stDownloadButton"] a {
         font-size: 0.9rem !important;
         font-weight: 800 !important;
-        padding: 0.45rem 0.85rem !important;
+        padding: 0.48rem 0.9rem !important;
         width: auto !important;
         height: 42px !important;
         min-height: 42px !important;
@@ -111,104 +108,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-
-def inject_scroll_buttons():
-    """Tombol sticky scroll-to-top (kanan atas) & scroll-to-bottom (kanan bawah).
-
-    Dipasang lewat components.html (bukan st.markdown) supaya bisa dieksekusi
-    sebagai JS beneran dan menempelkan tombolnya langsung ke `body` paling
-    atas lewat window.parent.document -- ini melewati semua container
-    Streamlit yang suka diberi transform/overflow oleh tema, yang sebelumnya
-    bikin `position: fixed` versi CSS-murni jadi ikut ke-scroll & hilang.
-    Klik tombolnya juga otomatis mencari elemen yang BENERAN scroll di
-    halaman (bukan asumsi window), jadi tetap jalan walau struktur DOM
-    Streamlit berubah antar versi.
-    """
-    components.html(
-        """
-        <script>
-        (function() {
-            const doc = window.parent.document;
-
-            function getScrollEl() {
-                const candidates = [
-                    doc.querySelector('section.main'),
-                    doc.querySelector('[data-testid="stAppViewContainer"]'),
-                    doc.querySelector('[data-testid="stMain"]'),
-                    doc.scrollingElement,
-                    doc.documentElement,
-                ].filter(Boolean);
-                for (const el of candidates) {
-                    if (el.scrollHeight > el.clientHeight + 10) return el;
-                }
-                return candidates[0] || doc.documentElement;
-            }
-
-            const old = doc.getElementById('qc-scroll-nav-wrapper');
-            if (old) old.remove();
-
-            const wrapper = doc.createElement('div');
-            wrapper.id = 'qc-scroll-nav-wrapper';
-            wrapper.innerHTML = `
-                <style>
-                    #qc-scroll-nav-wrapper .qc-scroll-btn {
-                        position: fixed !important;
-                        right: 18px;
-                        z-index: 999999;
-                        width: 44px;
-                        height: 44px;
-                        border-radius: 12px;
-                        background: #FFFFFF;
-                        color: #0F0F0F;
-                        border: 2.5px solid #0F0F0F;
-                        box-shadow: 4px 4px 0px #0F0F0F;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 1.05rem;
-                        font-weight: 800;
-                        line-height: 1;
-                        cursor: pointer;
-                        transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
-                    }
-                    #qc-scroll-nav-wrapper .qc-scroll-btn:hover {
-                        background: #FF7EB6;
-                        color: #0F0F0F;
-                        box-shadow: 6px 6px 0px #0F0F0F;
-                        transform: translate(-2px, -2px);
-                    }
-                    #qc-scroll-nav-wrapper .qc-scroll-btn:active {
-                        transform: translate(2px, 2px);
-                        box-shadow: 1px 1px 0px #0F0F0F;
-                    }
-                    #qc-scroll-top { top: 64px; }
-                    #qc-scroll-bottom { bottom: 86px; }
-                    @media (max-width: 640px) {
-                        #qc-scroll-top { top: 64px; }
-                        #qc-scroll-bottom { bottom: 88px; }
-                    }
-                </style>
-                <button id="qc-scroll-top" class="qc-scroll-btn" title="Ke atas" aria-label="Gulir ke atas" type="button">&#9650;</button>
-                <button id="qc-scroll-bottom" class="qc-scroll-btn" title="Ke bawah" aria-label="Gulir ke bawah" type="button">&#9660;</button>
-            `;
-            doc.body.appendChild(wrapper);
-
-            doc.getElementById('qc-scroll-top').onclick = function() {
-                getScrollEl().scrollTo({top: 0, behavior: 'smooth'});
-            };
-            doc.getElementById('qc-scroll-bottom').onclick = function() {
-                const el = getScrollEl();
-                el.scrollTo({top: el.scrollHeight, behavior: 'smooth'});
-            };
-        })();
-        </script>
-        """,
-        height=0,
-    )
-
-
-inject_scroll_buttons()
 
 structure = load_structure()
 supabase = get_supabase_client()
@@ -250,38 +149,6 @@ def _sync_remark_widgets(remarks: dict):
                 num = str(it["number"])
                 wk = f"{prefix}_remark_{num}"
                 st.session_state[wk] = _safe_remark(remarks.get(num, ""))
-
-
-def build_current_remarks(structure) -> dict:
-    """Kumpulkan Remarks TERKINI: kalau widget-nya sudah pernah dirender pada
-    run ini/sebelumnya, ambil dari session_state widget-nya langsung (yang
-    selalu up-to-date walau textarea-nya belum dirender ulang di run ini);
-    kalau belum pernah, fallback ke state 'remarks' tersimpan. Dipakai untuk
-    pratinjau skor di TENGAH halaman, sebelum tabel checklist dirender."""
-    current = {}
-    for cat in structure:
-        if cat.get("name") == "ETC":
-            continue
-        if "subcategories" in cat:
-            for sub in cat["subcategories"]:
-                prefix = f"editor_{sub['row']}"
-                for it in sub["items"]:
-                    num = str(it["number"])
-                    wk = f"{prefix}_remark_{num}"
-                    if wk in st.session_state:
-                        current[num] = _safe_remark(st.session_state[wk])
-                    else:
-                        current[num] = _safe_remark(st.session_state["remarks"].get(num, ""))
-        else:
-            prefix = f"editor_{cat['row']}"
-            for it in cat.get("items", []):
-                num = str(it["number"])
-                wk = f"{prefix}_remark_{num}"
-                if wk in st.session_state:
-                    current[num] = _safe_remark(st.session_state[wk])
-                else:
-                    current[num] = _safe_remark(st.session_state["remarks"].get(num, ""))
-    return current
 
 
 def reset_form():
@@ -386,20 +253,12 @@ st.markdown("---")
 
 c1, c2 = st.columns(2)
 with c1:
-    st.text_input("STORE NAME", key="store_name")
-    st.text_input("DATE", key="date1")
-    st.text_input("DATE (2)", key="date2")
+    st.session_state["store_name"] = st.text_input("STORE NAME", value=st.session_state["store_name"])
+    st.session_state["date1"] = st.text_input("DATE", value=st.session_state["date1"])
+    st.session_state["date2"] = st.text_input("DATE (2)", value=st.session_state["date2"])
 with c2:
-    st.text_input("AUDITOR", key="auditor")
-    st.text_input("PIC ON DUTY", key="pic_on_duty")
-
-st.markdown("---")
-
-_preview_result = compute_all(structure, build_current_remarks(structure))
-pm1, pm2, pm3 = st.columns(3)
-pm1.metric("TOTAL SCORE (E184)", round(_preview_result["grand_percent_sum"], 2))
-pm2.metric("FINAL SCORE", round(_preview_result["final_score"], 2))
-pm3.metric("GRADING", _preview_result["grade"])
+    st.session_state["auditor"] = st.text_input("AUDITOR", value=st.session_state["auditor"])
+    st.session_state["pic_on_duty"] = st.text_input("PIC ON DUTY", value=st.session_state["pic_on_duty"])
 
 st.markdown("---")
 st.subheader("DETAIL TO VERIFY")
@@ -598,6 +457,7 @@ if save_feedback:
     else:
         st.error(msg)
 
-st.markdown("<div style='height:90px'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
 
 inject_footer()
+
