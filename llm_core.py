@@ -20,11 +20,9 @@ from audit_core import load_structure
 PROVIDER_LIST = [
     "Kagiro Proxy",
     "Bandelbanget Proxy",
-    "Cartridge Proxy",
     "Kenari Proxy",
     "GateAI Proxy",
     "Juan Proxy",
-    "SeekAI Proxy",
     "9router Proxy",
     "DeepSeek (Direct)",
     "Gemini (Direct)",
@@ -37,11 +35,9 @@ PROVIDER_LIST = [
 # string kosong -> berarti URL diambil dari <PREFIX>_BASE_URL di secrets (dipakai
 # 9router yang alamat tunnel-nya tidak boleh di-hardcode ke repo publik).
 _GENERIC_GATEWAYS = {
-    "Cartridge Proxy": ("CARTRIDGE", "https://router.cartridge.my.id/v1"),
     "Kenari Proxy": ("KENARI", "https://kenari.id/v1/"),
     "GateAI Proxy": ("GATEAI", "https://gateai.id/v1/"),
     "Juan Proxy": ("JUAN", "https://router.juan.web.id/v1"),
-    "SeekAI Proxy": ("SEEKAI", "https://seekai.cc/v1/"),
     "9router Proxy": ("ROUTER9", ""),
 }
 
@@ -104,19 +100,21 @@ FALLBACK_MODELS = {
         },
     },
     "Gemini (Direct)": {
-        "gemini-flash-latest": {
+        "gemini-4-hydrogen": {
             "provider": "gemini",
-            "model": "gemini-flash-latest",
+            "model": "gemini-4-hydrogen",
         },
-        "gemini-flash-lite-latest": {
+        "gemini-3.8-flash": {
             "provider": "gemini",
-            "model": "gemini-flash-lite-latest",
+            "model": "gemini-3.8-flash",
         },
-    },
-    "Cartridge Proxy": {
-        "deepseek-v4.1-flash": {
-            "provider": "cartridge",
-            "model": "deepseek-v4.1-flash",
+        "gemini-3.5-flash-lite": {
+            "provider": "gemini",
+            "model": "gemini-3.5-flash-lite",
+        },
+        "gemini-4-argon": {
+            "provider": "gemini",
+            "model": "gemini-4-argon",
         },
     },
     "Kenari Proxy": {
@@ -134,12 +132,6 @@ FALLBACK_MODELS = {
     "Juan Proxy": {
         "deepseek-v4.1-flash": {
             "provider": "juan",
-            "model": "deepseek-v4.1-flash",
-        },
-    },
-    "SeekAI Proxy": {
-        "deepseek-v4.1-flash": {
-            "provider": "seekai",
             "model": "deepseek-v4.1-flash",
         },
     },
@@ -382,23 +374,37 @@ def scan_provider_models(
         )
 
     if mode == "gemini":
-        response = requests.get(
-            f"{base_url}/models",
-            params={"key": api_key},
-            timeout=timeout,
-        )
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Gagal Auto-Scan (HTTP {response.status_code}): "
-                f"{response.text[:200]}"
+        raw_entries = []
+        page_token = None
+        for _ in range(10):
+            params = {"pageSize": 1000}
+            if page_token:
+                params["pageToken"] = page_token
+            response = requests.get(
+                f"{base_url}/models",
+                headers={"x-goog-api-key": api_key},
+                params=params,
+                timeout=timeout,
             )
-        raw_entries = response.json().get("models", [])
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"Gagal Auto-Scan (HTTP {response.status_code}): "
+                    f"{response.text[:200]}"
+                )
+            payload = response.json()
+            raw_entries.extend(payload.get("models", []))
+            page_token = payload.get("nextPageToken")
+            if not page_token:
+                break
+
         model_ids = sorted(
-            m.get("name", "").removeprefix("models/")
-            for m in raw_entries
-            if isinstance(m, dict)
-            and m.get("name")
-            and "generateContent" in (m.get("supportedGenerationMethods") or [])
+            {
+                m.get("name", "").removeprefix("models/")
+                for m in raw_entries
+                if isinstance(m, dict)
+                and m.get("name")
+                and "generateContent" in (m.get("supportedGenerationMethods") or [])
+            }
         )
     else:
         response = requests.get(
@@ -467,12 +473,19 @@ def ping_provider_model(
     start_time = time.time()
     try:
         if mode == "gemini":
+            gen_cfg: dict = {"maxOutputTokens": 256}
+            lower_id = model_id.lower()
+            if lower_id.startswith(("gemini-4", "gemini-3")):
+                gen_cfg["thinkingConfig"] = {"thinkingLevel": "low"}
             resp = requests.post(
                 f"{base_url}/models/{model_id}:generateContent",
-                params={"key": api_key},
+                headers={
+                    "x-goog-api-key": api_key,
+                    "Content-Type": "application/json",
+                },
                 json={
                     "contents": [{"parts": [{"text": TEST_PROMPT}]}],
-                    "generationConfig": {"maxOutputTokens": 15},
+                    "generationConfig": gen_cfg,
                 },
                 timeout=timeout,
             )
@@ -1026,7 +1039,7 @@ def call_llm(
 
 
 def _call_gemini(model: str, prompt: str) -> str:
-    api_key = st.secrets.get("GEMINI_API_KEY")
+    api_key = _safe_secret("GEMINI_API_KEY")
 
     if not api_key:
         raise RuntimeError(
@@ -1040,7 +1053,10 @@ def _call_gemini(model: str, prompt: str) -> str:
 
     response = requests.post(
         url,
-        params={"key": api_key},
+        headers={
+            "x-goog-api-key": api_key,
+            "Content-Type": "application/json",
+        },
         json={
             "contents": [
                 {
@@ -1067,12 +1083,23 @@ def _call_gemini(model: str, prompt: str) -> str:
     data = response.json()
 
     try:
-        return data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError):
-        raise RuntimeError(
-            "Format respons Gemini tidak dikenali: "
-            f"{str(data)[:300]}"
-        )
+        parts = data["candidates"][0]["content"]["parts"]
+        texts = [
+            p["text"]
+            for p in parts
+            if isinstance(p, dict)
+            and isinstance(p.get("text"), str)
+            and not p.get("thought")
+        ]
+        if texts:
+            return "".join(texts)
+    except (KeyError, IndexError, TypeError):
+        pass
+
+    raise RuntimeError(
+        "Format respons Gemini tidak dikenali: "
+        f"{str(data)[:300]}"
+    )
 
 
 def _call_byok(model: str, prompt: str) -> str:
@@ -1197,13 +1224,12 @@ _PREFIX_TO_GATEWAY = {
 # lama yang pernah tersimpan di cache / .pyc).
 _PREFIX_TO_GATEWAY["9router"] = "9router Proxy"
 _PREFIX_TO_GATEWAY["router9"] = "9router Proxy"
-_PREFIX_TO_GATEWAY["cart"] = "Cartridge Proxy"
 _PREFIX_TO_GATEWAY["gate"] = "GateAI Proxy"
 
 
 def _call_generic_gateway(provider_key: str, model: str, prompt: str) -> str:
     """Panggil gateway OpenAI-compatible generik yang didaftarkan di
-    _GENERIC_GATEWAYS (Cartridge / Kenari / GateAI / Juan / SeekAI / 9router).
+    _GENERIC_GATEWAYS (Kenari / GateAI / Juan / 9router).
 
     Base URL diambil dari <PREFIX>_BASE_URL di secrets bila ada, kalau tidak
     pakai default gateway. Polanya sama dengan Kagiro/Bandelbanget.
