@@ -127,11 +127,9 @@ Semua provider mendukung **Auto-Scan (`GET /models` tanpa token)** dan **Health 
 | Bandelbanget Proxy | `BANDEL_` | ✅ | ✅ |
 | Kagiro Proxy | `KAGIRO_` | ✅ | ✅ |
 | 9router Proxy | `ROUTER9_` | ✅ | ✅ (`cbai/deepseek-v4.1-flash`) |
-| Cartridge Proxy | `CARTRIDGE_` | ✅ | ✅ |
 | Kenari Proxy | `KENARI_` | ✅ | ✅ |
 | GateAI Proxy | `GATEAI_` | ✅ | ✅ |
 | Juan Proxy | `JUAN_` | ✅ | ✅ |
-| SeekAI Proxy | `SEEKAI_` | ✅ | ✅ |
 | BYOK (Bring Your Own Key) | Input UI (shared) | ✅ | sesuai model |
 
 > [!TIP]
