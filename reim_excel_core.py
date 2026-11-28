@@ -1,233 +1,418 @@
 """
-excel_core.py — Isi data ke template Excel FORM_REIMBURSE.
+llm_core.py — Koneksi provider AI vision (Kagiro / Bandel / 9router / custom).
 
-Menangani:
-  - header info (Name/Department/Purpose/Bank Acc),
-  - periode E6/E7 (timestamp struk pertama & terakhir),
-  - penulisan baris data mulai DATA_START_ROW,
-  - perluasan baris otomatis bila data > baris tersedia,
-  - total otomatis (formula SUM).
+Menyediakan:
+  - `PROVIDERS`       : konfigurasi provider dari st.secrets (bukan hardcoded).
+  - `fetch_models`    : ambil daftar model dari endpoint /models (fallback default).
+  - `ping_model`      : tes API "hidup" dengan KIRIM completion kecil BENERAN,
+                        bukan cuma HTTP 200 pada /models — sehingga model yang
+                        terdaftar tapi tidak merespons akan terdeteksi.
+  - `prepare_image`   : resize + re-encode JPEG agar payload aman (menghindari
+                        HTTP 413 Payload Too Large dari server).
+  - `call_vision`     : panggil chat/completions dengan timeout panjang + retry
+                        + backoff (menghindari read timeout).
 """
 
+import base64
 import io
+import json
+import os
 import re
-import zipfile
-from datetime import date
+import time
 
-import openpyxl
+import requests
+import streamlit as st
+from PIL import Image
 
-TEMPLATE_PATH = "FORM_REIMBURSE_template.xlsx"
-DATA_START_ROW = 12
-DATA_END_ROW_DEFAULT = 61
-TOTAL_ROW_DEFAULT = 62
-SHEET_NAME = "FORM"
-
-# Sheet index (1-based, urutan di workbook.xml) yang punya gambar header.
-# template FORM_REIMBURSE menaruh logo perusahaan di sheet pertama.
-_SHEET_XML = "xl/worksheets/sheet1.xml"
-_SHEET_RELS = "xl/worksheets/_rels/sheet1.xml.rels"
-_CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
-_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
-_DRAWING_NS = ("http://schemas.openxmlformats.org/officeDocument/2006/"
-               "relationships/drawing")
+# ─────────────────────────────────────────────────────────────────────────
+# Konfigurasi provider (secrets, tidak pernah hardcoded)
+# ─────────────────────────────────────────────────────────────────────────
 
 
-def _guess_sheet(ws):
-    return ws
-
-
-def _reinsert_media(out_bytes: bytes, src_path: str) -> bytes:
-    """
-    openpyxl membuang gambar yang ada di dalam *grouped shape* (grpSp) saat
-    load+save -- logo header FORM_REIMBURSE hilang. Fungsi ini menyalin
-    kembali part drawing + media + rels dari template ASLI ke hasil openpyxl,
-    lalu menambal referensi <drawing> di sheet + [Content_Types].xml.
-
-    Dipakai supaya logo & alamat perusahaan tetap muncul di file hasil unduh.
-    """
+def _get_secret(key: str, default: str = "") -> str:
     try:
-        src = zipfile.ZipFile(src_path)
+        if key in st.secrets:
+            return st.secrets[key]
     except Exception:
-        return out_bytes
+        pass
+    return os.environ.get(key, default)
 
-    src_names = set(src.namelist())
-    # Ambil SEMUA part di bawah xl/drawings/ (termasuk _rels/*.rels yang
-    # menghubungkan <a:blip r:embed="..."> ke file gambar) + xl/media/.
-    # Kalau _rels drawing tidak ikut tersalin, logo jadi gambar rusak
-    # (relasi rId tidak ketemu) walau file image1.png ada.
-    drawing_parts = sorted(n for n in src_names
-                           if n.startswith("xl/drawings/"))
-    media_parts = sorted(n for n in src_names if n.startswith("xl/media/"))
-    if not drawing_parts and not media_parts:
-        return out_bytes  # template memang tanpa gambar
 
-    out = zipfile.ZipFile(io.BytesIO(out_bytes))
-    out_names = set(out.namelist())
+# Setiap provider dibaca dari secrets. `api_key` diambil dari <PREFIX>_API_KEY
+# (atau <PREFIX>_KEY); `base_url` dari <PREFIX>_BASE_URL. Provider tanpa API
+# key otomatis di-skip, jadi kamu bebas menambah/menghapus provider.
+_PROVIDER_DEFS = [
+    ("Kagiro", "KAGIRO", "https://api.kagiro.net/v1"),
+    ("Bandel", "BANDEL", "https://bandelbanget.xyz/v1"),
+    # URL endpoint 9router diisi lewat secrets (ROUTER9_BASE_URL) supaya alamat
+    # tunnel internal tidak ikut ter-commit ke repo publik.
+    ("9router", "ROUTER9", ""),
+    ("Kenari", "KENARI", "https://kenari.id/v1"),
+    ("GateAI", "GATEAI", "https://gateai.id/v1"),
+    ("Juan", "JUAN", "https://router.juan.web.id/v1"),
+    # Google Gemini API resmi (OpenAI-compatible endpoint)
+    ("Gemini", "GEMINI", "https://generativelanguage.googleapis.com/v1beta/openai"),
+]
 
-    # Kalau openpyxl sudah membawa drawing (template non-grouped, mis. audit),
-    # tidak perlu intervensi.
-    if any(n.startswith("xl/drawings/") for n in out_names):
-        return out_bytes
+PROVIDERS = {}
+for _name, _prefix, _default_url in _PROVIDER_DEFS:
+    _key = _get_secret(f"{_prefix}_API_KEY") or _get_secret(f"{_prefix}_KEY")
+    if _key:
+        PROVIDERS[_name] = {
+            "base_url": _get_secret(f"{_prefix}_BASE_URL", _default_url).rstrip("/"),
+            "api_key": _key,
+        }
+del _name, _prefix, _default_url, _key
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as dst:
-        for item in out.infolist():
-            data = out.read(item.filename)
-            if item.filename == "[Content_Types].xml":
-                data = _patch_content_types(data, media_parts, drawing_parts)
-            elif item.filename == _SHEET_XML:
-                data = _patch_sheet_drawing(data)
-            dst.writestr(item, data)
+# Fallback HANYA dipakai kalau endpoint /models tidak tersedia / kosong.
+# Daftar ini sengaja generik (model vision lintas-vendor) dan TIDAK memuat id
+# spesifik gateway (mis. "cbai/...") supaya id milik 9router tidak bocor ke
+# provider lain saat /models gagal.
+FALLBACK_MODELS = [
+    "qwen-vl-max",
+    "qwen2.5-vl-72b-instruct",
+    "qwen-vl-max-latest",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gemini-4-hydrogen",
+    "gemini-3.8-flash",
+]
 
-        # Salin drawing + media + rels apa adanya dari template asli.
-        for n in drawing_parts + media_parts:
-            dst.writestr(n, src.read(n))
+# Fallback tambahan KHUSUS per provider (dipakai kalau /models gagal). Dipakai
+# mis. oleh 9router yang punya id bervendor-prefix seperti "cbai/deepseek-v4.1-flash".
+_PROVIDER_EXTRA_FALLBACK = {
+    "9router": ["cbai/deepseek-v4.1-flash", "deepseek-v4.1-flash"],
+    "Gemini": ["gemini-4-hydrogen", "gemini-3.8-flash", "gemini-3.5-flash-lite"],
+}
 
-        # Rels sheet -> drawing (dan drawing -> media ikut tersalin di atas).
-        sheet_rels_name = _SHEET_RELS
-        if sheet_rels_name in src_names:
-            dst.writestr(sheet_rels_name, src.read(sheet_rels_name))
+
+def _auth_headers(cfg: dict) -> dict:
+    return {"Authorization": f"Bearer {cfg['api_key']}"}
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Daftar model
+# ─────────────────────────────────────────────────────────────────────────
+
+
+# Catatan desain: TIDAK ada daftar "hint vision" yang dipakai untuk MEMPERTAHANKAN
+# model. Filter hanya bersifat membuang (lihat _NON_VISION_HINTS). Ini supaya
+# daftar model yang tampil benar-benar model asli dari server, bukan hasil tebakan
+# dari pola nama — akar masalah "scan tidak menampilkan model sebenarnya".
+
+
+def fetch_models(provider_name: str) -> list:
+    """Ambil daftar model id ASLI dari /models (tanpa filter).
+
+    Return (ids, from_server). `from_server=False` menandakan endpoint gagal /
+    kosong sehingga `ids` berisi fallback default.
+    """
+    cfg = PROVIDERS[provider_name]
+    url = f"{cfg['base_url']}/models"
+    try:
+        r = requests.get(url, headers=_auth_headers(cfg), timeout=12)
+        if r.status_code == 200:
+            data = r.json()
+            models = data.get("data", data)
+            ids = []
+            for m in (models if isinstance(models, list) else []):
+                if isinstance(m, dict):
+                    mid = m.get("id")
+                    if isinstance(mid, str):
+                        ids.append(mid.removeprefix("models/"))
+                elif isinstance(m, str):
+                    ids.append(m.removeprefix("models/"))
+            if ids:
+                return ids, True
+    except Exception:
+        pass
+    fallback = list(FALLBACK_MODELS) + list(_PROVIDER_EXTRA_FALLBACK.get(provider_name, []))
+    return fallback, False
+
+
+def _model_declares_non_vision(model_obj) -> bool:
+    """True bila metadata model secara EXPLISIT menyatakan non-vision.
+
+    Beberapa gateway mengirim field `modality`/`input_modalities`/`vision`.
+    Kalau endpoint memberi info ini, kita pakai sebagai sinyal utama — bukan
+    menebak dari nama. Endpoint yang tidak memberi info -> None (tidak terpakai).
+    """
+    if not isinstance(model_obj, dict):
+        return False
+    # `vision: false` eksplisit
+    for k in ("vision", "supports_vision", "multimodal"):
+        if k in model_obj and model_obj[k] is False:
+            return True
+    # input_modalities / modality tanpa "image"
+    for k in ("input_modalities", "modalities", "modality"):
+        v = model_obj.get(k)
+        if v is None:
+            continue
+        vals = v if isinstance(v, (list, tuple)) else [v]
+        s = " ".join(str(x).lower() for x in vals)
+        if s and "image" not in s and "vision" not in s:
+            return True
+    return False
+
+
+def fetch_models_raw(provider_name: str) -> dict:
+    """Ambil daftar model + metadata mentah dari /models.
+
+    Return {"ids": [...], "non_vision": set(ids), "from_server": bool}.
+    `non_vision` berisi id yang ENDPOINT-nya bilang non-vision (kalau info ada).
+    """
+    cfg = PROVIDERS[provider_name]
+    url = f"{cfg['base_url']}/models"
+    ids, non_vision, from_server = [], set(), False
+    try:
+        r = requests.get(url, headers=_auth_headers(cfg), timeout=12)
+        if r.status_code == 200:
+            data = r.json()
+            models = data.get("data", data)
+            for m in (models if isinstance(models, list) else []):
+                if isinstance(m, dict):
+                    mid = m.get("id")
+                    if isinstance(mid, str):
+                        clean_id = mid.removeprefix("models/")
+                        ids.append(clean_id)
+                        if _model_declares_non_vision(m):
+                            non_vision.add(clean_id)
+                elif isinstance(m, str):
+                    ids.append(m.removeprefix("models/"))
+            if ids:
+                from_server = True
+    except Exception:
+        pass
+    if not from_server:
+        ids = list(FALLBACK_MODELS) + list(_PROVIDER_EXTRA_FALLBACK.get(provider_name, []))
+    return {"ids": ids, "non_vision": non_vision, "from_server": from_server}
+
+
+def fetch_vision_models(provider_name: str) -> list:
+    """Daftar model VISION dari /models provider ini.
+
+    Prinsip: TAMPILKAN MODEL ASLI DARI SERVER. Penyaringan vision hanya membuang
+    model yang endpoint-nya (atau polanya) secara jelas bukan vision — sisanya
+    dibiarkan muncul. Kalau hasil filter kosong, kembalikan daftar aslinya
+    supaya dropdown tidak pernah kosong / tidak kehilangan model nyata.
+    """
+    info = fetch_models_raw(provider_name)
+    ids = info["ids"]
+    non_vision = info["non_vision"]  # dari metadata endpoint (paling akurat)
+
+    vision = []
+    for mid in ids:
+        if mid in non_vision:
+            continue
+        if _is_definitely_non_vision(mid):
+            continue
+        vision.append(mid)
+
+    if vision:
+        return vision
+    # Filter terlalu agresif -> jangan sembunyikan model nyata.
+    return ids
+
+
+def fetch_all_models(provider_name: str) -> list:
+    """Seluruh model asli dari server (tanpa filter vision).
+
+    Dipakai untuk dropdown "Mode: semua model" di halaman Reimburse, supaya
+    model yang tidak terdeteksi oleh pola nama tetap bisa dipilih manual.
+    """
+    return fetch_models_raw(provider_name)["ids"]
+
+
+# Pola id yang PASTI bukan vision (dipakai untuk membuang, bukan untuk
+# mempertahankan). Sengaja konservatif: kalau ragu, model tetap ditampilkan.
+_NON_VISION_HINTS = (
+    "embedding",
+    "embed",
+    "rerank",
+    "reranker",
+    "tts",
+    "whisper",
+    "audio",
+    "speech",
+    "moderation",
+    "dall-e",
+    "image-generation",
+    "stable-diffusion",
+    "flux",
+    "sdxl",
+    "bge-",
+    "text-embedding",
+)
+
+
+def _is_definitely_non_vision(model_id: str) -> bool:
+    m = model_id.lower()
+    return any(h in m for h in _NON_VISION_HINTS)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Ping API "hidup" — kirim completion asli, bukan cuma HTTP 200
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def ping_model(provider_name: str, model: str) -> tuple:
+    """Kirim chat kecil "hi" ke model dan laporkan hasilnya.
+
+    Return (ok: bool, pesan: str, ms: int|None).
+    """
+    cfg = PROVIDERS[provider_name]
+    url = f"{cfg['base_url']}/chat/completions"
+    is_gemini = "generativelanguage.googleapis.com" in cfg["base_url"]
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 256 if is_gemini else 20,
+        "temperature": 0,
+    }
+    headers = {**_auth_headers(cfg), "Content-Type": "application/json"}
+    start = time.time()
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=30)
+        ms = int((time.time() - start) * 1000)
+        if r.status_code == 200:
+            data = r.json()
+            content = ""
+            try:
+                msg = data["choices"][0]["message"]
+                content = msg.get("content", "")
+                # Sebagian gateway mengembalikan content sebagai list of parts.
+                if isinstance(content, list):
+                    content = " ".join(
+                        str(p.get("text", "")) if isinstance(p, dict) else str(p)
+                        for p in content
+                    )
+            except (KeyError, IndexError, TypeError):
+                content = ""
+            reply = (content or "").strip()
+            if not reply:
+                return False, f"⚠️ HTTP 200 tapi balasan kosong ({ms} ms)", ms
+            return True, f"✅ Model merespons: “{reply[:60]}” ({ms} ms)", ms
         else:
-            dst.writestr(sheet_rels_name, _make_sheet_rels(len(drawing_parts)))
+            return False, f"❌ Status {r.status_code}: {r.text[:120]}", ms
+    except Exception as e:
+        return False, f"❌ Gagal terhubung ({e})", None
 
-    buf.seek(0)
+
+def check_all_providers() -> dict:
+    """Scan semua provider: daftar model (tanpa ping per model).
+
+    Return {provider_name: {"models": [id vision...]}}
+    """
+    out = {}
+    for name in PROVIDERS:
+        out[name] = {"models": fetch_vision_models(name)}
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Siapkan gambar (hindari 413 + byte kecil)
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def prepare_image(file_bytes: bytes, max_side: int = 1600, quality: int = 85) -> bytes:
+    """Resize gambar ke max_side dan re-encode jadi JPEG sehingga payload
+    base64-nya tetap kecil (teks struk tetap terbaca). Gambar asli TIDAK
+    diubah (dipakai untuk PDF gabungan)."""
+    try:
+        img = Image.open(io.BytesIO(file_bytes))
+        img = img.convert("RGB")
+    except Exception:
+        return file_bytes
+    w, h = img.size
+    longest = max(w, h)
+    if longest > max_side:
+        ratio = max_side / float(longest)
+        img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=quality, optimize=True)
     return buf.getvalue()
 
 
-def _patch_sheet_drawing(sheet_xml: bytes) -> bytes:
-    text = sheet_xml.decode("utf-8")
+# ─────────────────────────────────────────────────────────────────────────
+# Panggil vision API
+# ─────────────────────────────────────────────────────────────────────────
 
-    # Pastikan namespace "r:" terdeklarasi di <worksheet ...> supaya
-    # atribut r:id pada <drawing> tidak jadi "unbound prefix".
-    if "xmlns:r=" not in text:
-        text = re.sub(
-            r"<worksheet\b",
-            '<worksheet xmlns:r="http://schemas.openxmlformats.org/'
-            'officeDocument/2006/relationships"',
-            text,
-            count=1,
+
+def call_vision(
+    provider_name: str,
+    model: str,
+    image_bytes: bytes,
+    prompt: str,
+    timeout: int = 120,
+    retries: int = 2,
+) -> dict:
+    """Kirim satu gambar + prompt ke model vision. Return objek JSON (dict/list).
+
+    - image_bytes di-resize dulu (prepare_image) untuk hindari 413.
+    - timeout panjang (default 120 dtk) + retry dengan backoff utk read timeout.
+    """
+    cfg = PROVIDERS[provider_name]
+    url = f"{cfg['base_url']}/chat/completions"
+    headers = {**_auth_headers(cfg), "Content-Type": "application/json"}
+
+    prepared = prepare_image(image_bytes)
+    b64 = base64.b64encode(prepared).decode("utf-8")
+
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                ],
+            }
+        ],
+        "temperature": 0.1,
+    }
+
+    last_err = None
+    last_content = ""
+    for attempt in range(retries + 1):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            r.raise_for_status()
+            try:
+                raw_content = r.json()["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, TypeError):
+                raise ValueError(
+                    f"Format respons tidak dikenali dari {provider_name}: "
+                    f"{r.text[:200]}"
+                )
+            if isinstance(raw_content, list):
+                raw_content = " ".join(
+                    str(p.get("text", "")) if isinstance(p, dict) else str(p)
+                    for p in raw_content
+                )
+            content = re.sub(r"```(?:json)?|```", "", str(raw_content or "")).strip()
+            last_content = content
+            if not content:
+                raise ValueError("Respons model kosong (empty response).")
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError:
+                # Coba ekstrak objek/array JSON pertama dari teks bebas.
+                start = min(
+                    [i for i in (content.find("{"), content.find("[")) if i != -1],
+                    default=-1,
+                )
+                if start != -1:
+                    return json.loads(content[start:])
+                raise
+        except Exception as e:
+            last_err = e
+            if attempt < retries:
+                time.sleep(2 * (attempt + 1))  # backoff: 2s, 4s
+    if isinstance(last_err, json.JSONDecodeError):
+        snippet = (last_content or "")[:200]
+        raise ValueError(
+            f"Gagal parse JSON dari model {model}. "
+            f"Raw output: '{snippet}' Error: {last_err}"
         )
-
-    if "<drawing" in text:
-        return text.encode("utf-8")
-
-    tag = '<drawing r:id="rId1"/>'
-    if "</worksheet>" in text:
-        text = text.replace("</worksheet>", tag + "</worksheet>", 1)
-    else:
-        text = text + tag
-    return text.encode("utf-8")
-
-
-def _patch_content_types(ct_xml: bytes, media_parts, drawing_parts) -> bytes:
-    text = ct_xml.decode("utf-8")
-    additions = []
-    if ".png" in " ".join(media_parts) and 'Extension="png"' not in text:
-        additions.append('<Default Extension="png" '
-                         'ContentType="image/png"/>')
-    for n in drawing_parts:
-        if not n.endswith(".xml"):
-            continue  # hanya part drawing XML yang butuh Override
-        override = ('<Override PartName="/%s" ContentType="application/'
-                    'vnd.openxmlformats-officedocument.drawing+xml"/>' % n)
-        if ('PartName="/%s"' % n) not in text:
-            additions.append(override)
-    if additions:
-        text = text.replace("</Types>", "".join(additions) + "</Types>", 1)
-    return text.encode("utf-8")
-
-
-def _make_sheet_rels(n_drawings: int) -> bytes:
-    rels = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-            '<Relationships xmlns="%s">' % _REL_NS]
-    for i in range(n_drawings):
-        rels.append('<Relationship Id="rId%d" Type="%s" '
-                    'Target="../drawings/drawing%d.xml"/>'
-                    % (i + 1, _DRAWING_NS, i + 1))
-    rels.append("</Relationships>")
-    return "".join(rels).encode("utf-8")
-
-
-def _is_na(v):
-    try:
-        import pandas as pd
-
-        return bool(pd.isna(v))
-    except Exception:
-        return False
-
-
-def fill_excel_template(df, template_path: str, header_info: dict) -> bytes:
-    wb = openpyxl.load_workbook(template_path)
-    ws = wb[SHEET_NAME]
-
-    if header_info.get("name"):
-        ws["C6"] = header_info["name"]
-    if header_info.get("department"):
-        ws["C7"] = header_info["department"]
-    if header_info.get("purpose"):
-        ws["C8"] = header_info["purpose"]
-    if header_info.get("bank_acc"):
-        ws["C9"] = header_info["bank_acc"]
-
-    # Periode E6 = timestamp struk/transaksi pertama, E7 = terakhir
-    # (baris sudah terurut kronologis; jam hanya penentu urutan, sel menampilkan tanggal).
-    if not df.empty:
-        valid_dates = [d for d in df["date"] if d and not _is_na(d)]
-        if valid_dates:
-            period_start = valid_dates[0]
-            period_end = valid_dates[-1]
-        else:
-            period_start = period_end = date.today()
-    else:
-        period_start = period_end = date.today()
-    for cell, val in (("E6", period_start), ("E7", period_end)):
-        ws[cell].number_format = "d mmm yyyy"
-        ws[cell] = val
-
-    n = len(df)
-    available_rows = DATA_END_ROW_DEFAULT - DATA_START_ROW + 1
-
-    if n > available_rows:
-        extra = n - available_rows
-        ws.insert_rows(DATA_END_ROW_DEFAULT + 1, amount=extra)
-        for i in range(extra):
-            src_row = DATA_END_ROW_DEFAULT
-            dst_row = DATA_END_ROW_DEFAULT + 1 + i
-            for col in range(2, 6):
-                src_cell = ws.cell(row=src_row, column=col)
-                dst_cell = ws.cell(row=dst_row, column=col)
-                dst_cell.number_format = src_cell.number_format
-                dst_cell.font = src_cell.font.copy()
-                dst_cell.border = src_cell.border.copy()
-                dst_cell.fill = src_cell.fill.copy()
-                dst_cell.alignment = src_cell.alignment.copy()
-        total_row = TOTAL_ROW_DEFAULT + extra
-        data_end_row = DATA_END_ROW_DEFAULT + extra
-    else:
-        total_row = TOTAL_ROW_DEFAULT
-        data_end_row = DATA_END_ROW_DEFAULT
-
-    for i, row in df.iterrows():
-        r = DATA_START_ROW + i
-        d = row["date"]
-        ws.cell(row=r, column=2, value=d)
-        if d:
-            ws.cell(row=r, column=2).number_format = "d mmm yyyy"
-        ws.cell(row=r, column=3, value=row["category"])
-        ws.cell(row=r, column=4, value=row["description"])
-        ws.cell(row=r, column=5, value=row["nominal"])
-        ws.cell(row=r, column=5).number_format = "#,##0"
-
-    ws.cell(row=total_row, column=5, value=f"=SUM(E{DATA_START_ROW}:E{data_end_row})")
-
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-    out = buf.getvalue()
-
-    # openpyxl membuang gambar grouped-shape (logo header) saat save.
-    # Kembalikan dari template asli supaya logo & alamat tetap tampil.
-    out = _reinsert_media(out, template_path)
-
-    return out
+    raise last_err if last_err else RuntimeError("call_vision gagal")
