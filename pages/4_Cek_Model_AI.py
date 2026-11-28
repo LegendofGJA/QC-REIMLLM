@@ -39,10 +39,6 @@ PRESET_PROVIDERS = {
         "url": "https://bandelbanget.xyz/v1",
         "secret": "BANDEL_API_KEY",
     },
-    "Cartridge": {
-        "url": "https://router.cartridge.my.id/v1",
-        "secret": "CARTRIDGE_API_KEY",
-    },
     "Kenari": {
         "url": "https://kenari.id/v1/",
         "secret": "KENARI_API_KEY",
@@ -55,13 +51,13 @@ PRESET_PROVIDERS = {
         "url": "https://router.juan.web.id/v1",
         "secret": "JUAN_API_KEY",
     },
-    "SeekAI": {
-        "url": "https://seekai.cc/v1/",
-        "secret": "SEEKAI_API_KEY",
-    },
     "DeepSeek Direct": {
         "url": "https://api.deepseek.com/v1",
         "secret": "DEEPSEEK_API_KEY",
+    },
+    "Gemini Direct": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "secret": "GEMINI_API_KEY",
     },
     "OpenRouter": {
         "url": "https://openrouter.ai/api/v1",
@@ -144,7 +140,11 @@ if c_btn1.button("🔍 Auto-Scan Daftar Model", type="primary", use_container_wi
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    model_list = [m["id"] for m in data.get("data", []) if "id" in m]
+                    model_list = [
+                        str(m["id"]).removeprefix("models/")
+                        for m in data.get("data", [])
+                        if "id" in m
+                    ]
                     model_list.sort()
                     st.session_state["scanned_models"] = model_list
                     st.session_state["scanned_key"] = active_api_key
@@ -169,6 +169,7 @@ if scanned_models:
 
         target_key = st.session_state.get("scanned_key", active_api_key)
         target_url = st.session_state.get("scanned_url", chat_endpoint)
+        is_gemini_url = "generativelanguage.googleapis.com" in target_url
 
         total = len(scanned_models)
         for i, model_id in enumerate(scanned_models, start=1):
@@ -185,7 +186,7 @@ if scanned_models:
                     json={
                         "model": model_id,
                         "messages": [{"role": "user", "content": TEST_PROMPT}],
-                        "max_tokens": 15,
+                        "max_tokens": 256 if is_gemini_url else 15,
                     },
                     timeout=timeout_s,
                 )
